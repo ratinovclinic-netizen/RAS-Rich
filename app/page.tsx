@@ -362,26 +362,26 @@ export default function Home() {
           <span className="brand-mark" aria-hidden="true">И</span>
           <span>
             <strong>ИнвестКапитал</strong>
-            <small>калькулятор для инвестиционного отдела</small>
+            <small>персональный расчёт для инвестора</small>
           </span>
         </a>
         <div className="topbar-note">
-          <span className="status-dot" /> Расчёт обновляется автоматически
+          <span className="status-dot" /> Ваш расчёт обновляется автоматически
         </div>
       </header>
 
       <section className="hero" id="top">
         <div className="hero-copy">
-          <p className="eyebrow">Сложный процент — наглядно</p>
-          <h1>Покажите инвестору силу долгого капитала</h1>
+          <p className="eyebrow">Ваш капитал — ваш будущий результат</p>
+          <h1>Узнайте, сколько заработает ваш капитал</h1>
           <p className="hero-text">
-            Чем больше тело и дольше доход остаётся в работе, тем заметнее
-            проценты начинают приносить новые проценты.
+            Выберите сумму и срок — и сразу увидите, почему выгоднее оставить
+            проценты работать, увеличить капитал и быстрее приблизиться к своей цели.
           </p>
         </div>
         <div className="hero-principle">
-          <span>Главный принцип</span>
-          <strong>Не изымать доход — дать ему расти</strong>
+          <span>Ваша стратегия роста</span>
+          <strong>Не забирать проценты сейчас — получить больше в будущем</strong>
         </div>
       </section>
 
@@ -390,8 +390,8 @@ export default function Home() {
           <div className="panel-heading">
             <span className="step-number">01</span>
             <div>
-              <p className="section-kicker">Параметры</p>
-              <h2>Настройте расчёт</h2>
+              <p className="section-kicker">Ваши условия</p>
+              <h2>Выберите сумму и срок</h2>
             </div>
           </div>
 
