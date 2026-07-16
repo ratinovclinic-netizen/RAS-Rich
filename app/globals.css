@@ -1333,6 +1333,97 @@ footer {
   color: var(--green);
 }
 
+.equity-entry-rule {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 13px 15px;
+  border: 1px solid rgba(20, 62, 50, 0.16);
+  border-radius: 10px;
+  background: #f0f4ea;
+}
+
+.equity-entry-rule span {
+  color: var(--green);
+  font-size: 7.5px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.equity-entry-rule strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 16px;
+}
+
+.equity-entry-rule small {
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.equity-chronology {
+  display: grid;
+  gap: 0;
+  margin-top: 4px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fffef9;
+  overflow: hidden;
+}
+
+.equity-chronology > div {
+  position: relative;
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 4px 14px;
+  padding: 15px 16px 15px 40px;
+  border-bottom: 1px solid var(--line);
+}
+
+.equity-chronology > div:last-child {
+  border-bottom: 0;
+}
+
+.equity-chronology > div::before {
+  content: "";
+  position: absolute;
+  left: 17px;
+  top: 19px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #fffef9;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 1px rgba(20, 62, 50, 0.3);
+}
+
+.equity-chronology > div:last-child::before {
+  background: #bd861f;
+  box-shadow: 0 0 0 1px rgba(189, 134, 31, 0.35);
+}
+
+.equity-chronology span {
+  color: var(--green);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.equity-chronology strong {
+  min-width: 0;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.equity-chronology small {
+  grid-column: 2;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
 .equity-scenario-options button {
   min-height: 112px;
 }

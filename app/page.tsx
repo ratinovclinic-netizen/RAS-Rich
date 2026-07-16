@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 type ModeId = "monthly" | "quarterly" | "yearly" | "maturity";
 type ProductId = "fixed" | "clinic" | "equity";
 type ClinicScenarioId = "minimum" | "base" | "achievable";
-type EquityScenarioId = "minimum" | "base" | "maximum";
 type GoalId =
   | "preserve"
   | "car"
@@ -34,26 +33,17 @@ const CLINIC_USD_RATE = 87.5;
 const EQUITY_MIN_RETURN = 14;
 const TOTAL_HOLDING_SHARES = 1_000_000;
 const PREFERRED_SHARES_FOR_SALE = 300_000;
+const MIN_EQUITY_SHARES = 1_000;
 const CURRENT_SHARE_PRICE_USD = 25;
-const TARGET_SHARE_PRICE_USD = 150;
+const YEAR_ONE_CLINICS = 50;
+const FRANCHISE_CLINICS = 1_000;
+const YEAR_ONE_VALUATION_USD = 50_000_000;
+const EQUIPMENT_PER_FRANCHISE_USD = 100_000;
+const EQUIPMENT_NET_MARGIN = 0.6;
+const MONTHLY_HOLDING_INCOME_PER_FRANCHISE_USD = 5_000;
+const FRANCHISE_INCOME_GROWTH = 0.25;
+const RECURRING_INCOME_MULTIPLE = 2;
 const TERMS = [6, 12, 24, 36] as const;
-
-const HOLDING_CLINICS_BY_YEAR: Record<number, number> = {
-  1: 50,
-  2: 1_000,
-  3: 5_000,
-};
-
-const EQUITY_SCENARIOS: Array<{
-  id: EquityScenarioId;
-  title: string;
-  equipmentUsd: number;
-  turnoverSomMonth: number;
-}> = [
-  { id: "minimum", title: "Минимум", equipmentUsd: 40_000, turnoverSomMonth: 2_000_000 },
-  { id: "base", title: "База", equipmentUsd: 120_000, turnoverSomMonth: 7_000_000 },
-  { id: "maximum", title: "Потенциал", equipmentUsd: 200_000, turnoverSomMonth: 12_000_000 },
-];
 
 const CLINIC_SCENARIOS: Array<{
   id: ClinicScenarioId;
@@ -308,9 +298,7 @@ export default function Home() {
   const [mode, setMode] = useState<ModeId>("maturity");
   const [clinicShare, setClinicShare] = useState(1);
   const [clinicScenarioId, setClinicScenarioId] = useState<ClinicScenarioId>("base");
-  const [equityInvestmentUsd, setEquityInvestmentUsd] = useState(10_000);
-  const [equityScenarioId, setEquityScenarioId] = useState<EquityScenarioId>("base");
-  const [equityDividendGrowth, setEquityDividendGrowth] = useState(0);
+  const [equityInvestmentUsd, setEquityInvestmentUsd] = useState(25_000);
   const [copied, setCopied] = useState(false);
   const [clientName, setClientName] = useState("");
   const [goalId, setGoalId] = useState<GoalId>("preserve");
@@ -332,8 +320,6 @@ export default function Home() {
     const clinicShareParam = Number(params.get("share"));
     const clinicScenarioParam = params.get("scenario") as ClinicScenarioId | null;
     const equityInvestmentParam = Number(params.get("stock"));
-    const equityScenarioParam = params.get("equityScenario") as EquityScenarioId | null;
-    const dividendGrowthParam = Number(params.get("dividendGrowth"));
     const goalParam = params.get("goal") as GoalId | null;
     const targetParam = Number(params.get("target"));
     const nameParam = params.get("name");
@@ -361,15 +347,9 @@ export default function Home() {
     if (Number.isFinite(equityInvestmentParam) && equityInvestmentParam > 0) {
       setEquityInvestmentUsd(clamp(
         Math.round(equityInvestmentParam / CURRENT_SHARE_PRICE_USD) * CURRENT_SHARE_PRICE_USD,
-        CURRENT_SHARE_PRICE_USD,
+        MIN_EQUITY_SHARES * CURRENT_SHARE_PRICE_USD,
         PREFERRED_SHARES_FOR_SALE * CURRENT_SHARE_PRICE_USD,
       ));
-    }
-    if (EQUITY_SCENARIOS.some((item) => item.id === equityScenarioParam)) {
-      setEquityScenarioId(equityScenarioParam as EquityScenarioId);
-    }
-    if (Number.isFinite(dividendGrowthParam) && dividendGrowthParam >= 0) {
-      setEquityDividendGrowth(clamp(dividendGrowthParam, 0, 50));
     }
     if (GOALS.some((item) => item.id === goalParam)) {
       setGoalId(goalParam as GoalId);
@@ -412,36 +392,36 @@ export default function Home() {
     ? clinicInvestment / clinicAnnualIncome
     : 0;
 
-  const equityScenario = EQUITY_SCENARIOS.find((item) => item.id === equityScenarioId)!;
   const equityYears = 3;
   const equityShareCount = clamp(
     Math.floor(equityInvestmentUsd / CURRENT_SHARE_PRICE_USD),
-    1,
+    MIN_EQUITY_SHARES,
     PREFERRED_SHARES_FOR_SALE,
   );
   const equityExactInvestmentUsd = equityShareCount * CURRENT_SHARE_PRICE_USD;
-  const equityDividendGrowthRate = equityDividendGrowth / 100;
   const equityDividendYear1Usd = equityExactInvestmentUsd * (EQUITY_MIN_RETURN / 100);
-  const equityDividendYear2Usd = equityDividendYear1Usd * (1 + equityDividendGrowthRate);
-  const equityDividendYear3Usd = equityDividendYear2Usd * (1 + equityDividendGrowthRate);
+  const equityDividendYear2Usd = equityDividendYear1Usd;
+  const equityDividendYear3Usd = equityDividendYear1Usd;
   const equityTotalDividendsUsd = equityDividendYear1Usd
     + equityDividendYear2Usd
     + equityDividendYear3Usd;
-  const equityTargetShareValueUsd = equityShareCount * TARGET_SHARE_PRICE_USD;
+  const holdingEquipmentRevenueUsd = FRANCHISE_CLINICS * EQUIPMENT_PER_FRANCHISE_USD;
+  const holdingEquipmentProfitUsd = holdingEquipmentRevenueUsd * EQUIPMENT_NET_MARGIN;
+  const holdingRecurringIncomeYear2Usd = FRANCHISE_CLINICS
+    * MONTHLY_HOLDING_INCOME_PER_FRANCHISE_USD
+    * 12;
+  const holdingRecurringIncomeYear3Usd = holdingRecurringIncomeYear2Usd
+    * (1 + FRANCHISE_INCOME_GROWTH);
+  const holdingCurrentValuationUsd = TOTAL_HOLDING_SHARES * CURRENT_SHARE_PRICE_USD;
+  const holdingYear2ValuationUsd = holdingRecurringIncomeYear2Usd * RECURRING_INCOME_MULTIPLE;
+  const holdingYear3ValuationUsd = holdingRecurringIncomeYear3Usd * RECURRING_INCOME_MULTIPLE;
+  const yearOneSharePriceUsd = YEAR_ONE_VALUATION_USD / TOTAL_HOLDING_SHARES;
+  const yearTwoSharePriceUsd = holdingYear2ValuationUsd / TOTAL_HOLDING_SHARES;
+  const yearThreeSharePriceUsd = holdingYear3ValuationUsd / TOTAL_HOLDING_SHARES;
+  const equityTargetShareValueUsd = equityShareCount * yearThreeSharePriceUsd;
   const equityTotalUsd = equityTargetShareValueUsd + equityTotalDividendsUsd;
   const equityProfitUsd = equityTotalUsd - equityExactInvestmentUsd;
-  const equityPriceCagr = (Math.pow(TARGET_SHARE_PRICE_USD / CURRENT_SHARE_PRICE_USD, 1 / 3) - 1) * 100;
-  const holdingClinicCount = HOLDING_CLINICS_BY_YEAR[3];
-  const holdingEquipmentRevenueUsd = holdingClinicCount * equityScenario.equipmentUsd;
-  const holdingEquipmentProfitUsd = holdingEquipmentRevenueUsd * 0.6;
-  let holdingRoyaltySom = 0;
-  for (let year = 1; year <= 3; year += 1) {
-    const clinics = HOLDING_CLINICS_BY_YEAR[year] ?? HOLDING_CLINICS_BY_YEAR[3];
-    holdingRoyaltySom += clinics * equityScenario.turnoverSomMonth * 12 * 0.15;
-  }
-  const holdingRoyaltyUsd = holdingRoyaltySom / CLINIC_USD_RATE;
-  const holdingCurrentValuationUsd = TOTAL_HOLDING_SHARES * CURRENT_SHARE_PRICE_USD;
-  const holdingTargetValuationUsd = TOTAL_HOLDING_SHARES * TARGET_SHARE_PRICE_USD;
+  const equityPriceCagr = (Math.pow(yearThreeSharePriceUsd / CURRENT_SHARE_PRICE_USD, 1 / 3) - 1) * 100;
   const preferredOfferVolumeUsd = PREFERRED_SHARES_FOR_SALE * CURRENT_SHARE_PRICE_USD;
 
   const activeAmount = product === "fixed"
@@ -508,11 +488,14 @@ export default function Home() {
     + clinicSuggestedExtraShares * clinicValuePerShare;
   const equityGoalGap = Math.max(0, effectiveGoalAmount - equityTotalUsd * CLINIC_USD_RATE);
   const equityDividendPerShareUsd = equityTotalDividendsUsd / equityShareCount;
-  const equityFutureValuePerShareUsd = TARGET_SHARE_PRICE_USD + equityDividendPerShareUsd;
+  const equityFutureValuePerShareUsd = yearThreeSharePriceUsd + equityDividendPerShareUsd;
   const equityAvailableShares = PREFERRED_SHARES_FOR_SALE - equityShareCount;
   const equityRequiredExtraShares = equityGoalGap > 0
-    ? Math.ceil(equityGoalGap / CLINIC_USD_RATE / equityFutureValuePerShareUsd)
-    : Math.max(1, Math.ceil(equityShareCount * 0.1));
+    ? Math.max(
+      MIN_EQUITY_SHARES,
+      Math.ceil(equityGoalGap / CLINIC_USD_RATE / equityFutureValuePerShareUsd),
+    )
+    : Math.max(MIN_EQUITY_SHARES, Math.ceil(equityShareCount * 0.1));
   const equitySuggestedExtraShares = Math.min(equityRequiredExtraShares, equityAvailableShares);
   const equitySuggestedExtraUsd = equitySuggestedExtraShares * CURRENT_SHARE_PRICE_USD;
   const equityProjectedTotalUsd = equityTotalUsd
@@ -622,8 +605,6 @@ export default function Home() {
       share: String(clinicShare),
       scenario: clinicScenarioId,
       stock: String(Math.round(equityInvestmentUsd)),
-      equityScenario: equityScenarioId,
-      dividendGrowth: String(equityDividendGrowth),
       goal: goalId,
       target: String(Math.round(goalAmount)),
       ...(clientName.trim() ? { name: clientName.trim() } : {}),
@@ -669,8 +650,6 @@ export default function Home() {
       share: String(clinicShare),
       scenario: clinicScenarioId,
       stock: String(Math.round(equityInvestmentUsd)),
-      equityScenario: equityScenarioId,
-      dividendGrowth: String(equityDividendGrowth),
       goal: goalId,
       target: String(Math.round(goalAmount)),
       ...(clientName.trim() ? { name: clientName.trim() } : {}),
@@ -756,8 +735,8 @@ export default function Home() {
             <span className="product-number">03</span>
             <span>
               <small>Рост вместе с медицинским холдингом</small>
-              <strong>Акции R.I.C.H.</strong>
-              <span>14% дивидендов в USD ежегодно и плановый рост акции с $25 до $150 за 3 года.</span>
+              <strong>Акции RS Holding</strong>
+              <span>От 1 000 акций по $25, 14% годовых в USD и поэтапная переоценка бизнеса.</span>
             </span>
             <span className="product-select">Выбрать</span>
           </button>
@@ -1213,13 +1192,13 @@ export default function Home() {
         </aside>
       </section>
       ) : (
-      <section className="calculator-grid equity-calculator" id="calculator" aria-label="Калькулятор акций холдинга R.I.C.H.">
+      <section className="calculator-grid equity-calculator" id="calculator" aria-label="Калькулятор акций RS Holding">
         <div className="control-panel">
           <div className="panel-heading">
             <span className="step-number">01</span>
             <div>
-              <p className="section-kicker">Акции R.I.C.H.</p>
-              <h2>Рассчитайте капитал в долларах</h2>
+              <p className="section-kicker">Акции RS Holding</p>
+              <h2>Ваш пакет и его рост по годам</h2>
             </div>
           </div>
 
@@ -1229,19 +1208,23 @@ export default function Home() {
               <input
                 id="equity-investment"
                 type="number"
-                min={1}
+                min={MIN_EQUITY_SHARES}
                 max={PREFERRED_SHARES_FOR_SALE}
                 step={1}
                 value={equityShareCount}
                 onChange={(event) => {
-                  const shares = clamp(Math.round(Number(event.target.value)), 1, PREFERRED_SHARES_FOR_SALE);
+                  const shares = clamp(
+                    Math.round(Number(event.target.value)),
+                    MIN_EQUITY_SHARES,
+                    PREFERRED_SHARES_FOR_SALE,
+                  );
                   setEquityInvestmentUsd(shares * CURRENT_SHARE_PRICE_USD);
                 }}
               />
               <span>акций</span>
             </div>
             <div className="equity-quick-values">
-              {[100, 400, 1_000, 5_000].map((shares) => (
+              {[1_000, 5_000, 10_000, 50_000].map((shares) => (
                 <button
                   key={shares}
                   type="button"
@@ -1251,81 +1234,53 @@ export default function Home() {
               ))}
             </div>
             <p className="equity-kgs-equivalent">
-              Стоимость пакета: <strong>{formatUsd(equityExactInvestmentUsd)}</strong> · цена {formatUsd(CURRENT_SHARE_PRICE_USD)} за акцию · доступно 300 000 из 1 000 000 акций
+              Стоимость пакета: <strong>{formatUsd(equityExactInvestmentUsd)}</strong> · текущая цена {formatUsd(CURRENT_SHARE_PRICE_USD)} за акцию
             </p>
+            <div className="equity-entry-rule">
+              <span>Минимальный вход</span>
+              <strong>{moneyFormatter.format(MIN_EQUITY_SHARES)} акций = {formatUsd(MIN_EQUITY_SHARES * CURRENT_SHARE_PRICE_USD)}</strong>
+              <small>В продаже 300 000 привилегированных акций из общего выпуска 1 000 000.</small>
+            </div>
           </div>
 
-          <fieldset className="field-block equity-scenario-field">
-            <legend>Сценарий роста сети</legend>
-            <div className="clinic-scenario-options equity-scenario-options">
-              {EQUITY_SCENARIOS.map((scenario) => (
-                <button
-                  key={scenario.id}
-                  type="button"
-                  className={equityScenarioId === scenario.id ? "active" : ""}
-                  onClick={() => setEquityScenarioId(scenario.id)}
-                  aria-pressed={equityScenarioId === scenario.id}
-                >
-                  <span>{scenario.title}</span>
-                  <strong>{formatUsd(scenario.equipmentUsd)} оборудования</strong>
-                  <small>{formatMoney(scenario.turnoverSomMonth)} оборота клиники в месяц</small>
-                </button>
-              ))}
+          <div className="equity-chronology" aria-label="Хронология роста RS Holding">
+            <div>
+              <span>Сегодня</span>
+              <strong>{formatUsd(holdingCurrentValuationUsd)} оценка · {formatUsd(CURRENT_SHARE_PRICE_USD)} за акцию</strong>
+              <small>1 000 000 акций в общем выпуске.</small>
             </div>
-          </fieldset>
-
-          <fieldset className="field-block dividend-growth-field">
-            <legend>Возможный рост суммы дивидендов в год</legend>
-            <div className="term-options dividend-growth-options">
-              {[0, 5, 10, 20].map((growth) => (
-                <button
-                  key={growth}
-                  type="button"
-                  className={equityDividendGrowth === growth ? "active" : ""}
-                  onClick={() => setEquityDividendGrowth(growth)}
-                  aria-pressed={equityDividendGrowth === growth}
-                >
-                  {growth === 0 ? "Без роста" : `+${growth}% в год`}
-                </button>
-              ))}
+            <div>
+              <span>1-й год</span>
+              <strong>{moneyFormatter.format(YEAR_ONE_CLINICS)} клиник · {formatUsd(YEAR_ONE_VALUATION_USD)} оценка</strong>
+              <small>{formatUsd(yearOneSharePriceUsd)} за акцию · ваш дивиденд {formatUsd(equityDividendYear1Usd)}.</small>
             </div>
-            <small className="dividend-growth-help">
-              База всегда начинается с 14% от цены покупки. Рост дивидендов — дополнительный сценарий, а не гарантия.
-            </small>
-          </fieldset>
-
-          <div className="equity-roadmap">
-            {[1, 2, 3].map((year) => {
-              const dividend = year === 1
-                ? equityDividendYear1Usd
-                : year === 2
-                  ? equityDividendYear2Usd
-                  : equityDividendYear3Usd;
-              return (
-                <div key={year}>
-                  <span>{year}-й год</span>
-                  <strong>до {moneyFormatter.format(HOLDING_CLINICS_BY_YEAR[year])} клиник</strong>
-                  <small>Дивиденд: {formatUsd(dividend)}</small>
-                  {year === 3 && <em>Цель акции: {formatUsd(TARGET_SHARE_PRICE_USD)}</em>}
-                </div>
-              );
-            })}
+            <div>
+              <span>2-й год</span>
+              <strong>{moneyFormatter.format(FRANCHISE_CLINICS)} франшиз · {formatUsd(holdingYear2ValuationUsd)} оценка</strong>
+              <small>{formatUsd(yearTwoSharePriceUsd)} за акцию · повторяющийся доход холдинга {formatUsd(holdingRecurringIncomeYear2Usd)} в год.</small>
+            </div>
+            <div>
+              <span>3-й год</span>
+              <strong>1 000 зрелых франшиз · {formatUsd(holdingYear3ValuationUsd)} оценка</strong>
+              <small>{formatUsd(yearThreeSharePriceUsd)} за акцию · доход сети вырос на 25%, новые клиники не учитываются.</small>
+            </div>
           </div>
 
           <div className="equity-assumption-note">
-            <strong>Как читается этот расчёт</strong>
+            <strong>Формула переоценки — простыми словами</strong>
             <p>
-              Первые 3 года расчёт показывает базовый дивиденд 14% годовых в USD.
-              Параллельно плановая цена акции растёт с $25 до $150. Экономика сети
-              показана отдельно: 60% чистой прибыли с оборудования и роялти 15% от оборота.
+              Во 2-й год 1 000 франшиз приносят холдингу минимум $5 000 в месяц каждая:
+              $60 млн повторяющегося дохода в год. Для расчёта берём осторожный коэффициент 2× —
+              получаем оценку $120 млн. В 3-й год доход каждой франшизы растёт на 25%,
+              годовой поток достигает $75 млн, а расчётная оценка — $150 млн.
             </p>
           </div>
         </div>
 
         <aside className="result-panel equity-result-panel" aria-live="polite">
           <div className="result-topline">
-            <span>Акции медицинского холдинга</span>
-            <span>{equityScenario.title.toLowerCase()} · {equityYears} г.</span>
+            <span>Привилегированные акции RS Holding</span>
+            <span>Хронология · {equityYears} года</span>
           </div>
 
           <div className="primary-result equity-primary-result">
@@ -1338,10 +1293,8 @@ export default function Home() {
             <span>Базовый дивиденд первые 3 года</span>
             <strong>{EQUITY_MIN_RETURN}% в год в USD</strong>
             <small>
-              В 1-й год {formatUsd(equityDividendYear1Usd)}.
-              {equityDividendGrowth > 0
-                ? ` Далее сумма растёт на ${equityDividendGrowth}% в год по выбранному сценарию.`
-                : " Без дополнительного роста дивидендов."}
+              По {formatUsd(equityDividendYear1Usd)} ежегодно на выбранный пакет.
+              Возможный рост дивидендов в базовый расчёт не включён.
             </small>
           </div>
 
@@ -1356,7 +1309,7 @@ export default function Home() {
             </div>
             <div>
               <span>Рост цены акции</span>
-              <strong>{formatUsd(CURRENT_SHARE_PRICE_USD)} → {formatUsd(TARGET_SHARE_PRICE_USD)}</strong>
+              <strong>{formatUsd(CURRENT_SHARE_PRICE_USD)} → {formatUsd(yearThreeSharePriceUsd)}</strong>
             </div>
           </div>
 
@@ -1367,8 +1320,16 @@ export default function Home() {
               <strong>{formatUsd(holdingCurrentValuationUsd)}</strong>
             </div>
             <div>
-              <span>Плановая оценка: 1 млн × $150</span>
-              <strong>{formatUsd(holdingTargetValuationUsd)}</strong>
+              <span>1-й год: 50 клиник × $1 млн оценки</span>
+              <strong>{formatUsd(YEAR_ONE_VALUATION_USD)}</strong>
+            </div>
+            <div>
+              <span>2-й год: $60 млн повторяющегося дохода × 2</span>
+              <strong>{formatUsd(holdingYear2ValuationUsd)}</strong>
+            </div>
+            <div>
+              <span>3-й год: $75 млн повторяющегося дохода × 2</span>
+              <strong>{formatUsd(holdingYear3ValuationUsd)}</strong>
             </div>
             <div>
               <span>300 000 привилегированных акций</span>
@@ -1382,24 +1343,24 @@ export default function Home() {
 
           <div className="equity-network-summary">
             <div>
-              <span>Клиник через 3 года</span>
-              <strong>{moneyFormatter.format(holdingClinicCount)}</strong>
+              <span>Оборудование для 1 000 франшиз</span>
+              <strong>{formatUsd(holdingEquipmentRevenueUsd)}</strong>
             </div>
             <div>
               <span>60% ЧП оборудования</span>
               <strong>{formatUsd(holdingEquipmentProfitUsd)}</strong>
             </div>
             <div>
-              <span>Роялти за 3 года</span>
-              <strong>{formatUsd(holdingRoyaltyUsd)}</strong>
+              <span>Доход сети в 3-й год</span>
+              <strong>{formatUsd(holdingRecurringIncomeYear3Usd)}</strong>
             </div>
           </div>
 
           <div className="clinic-risk-note equity-risk-note">
             <span aria-hidden="true">i</span>
             <p>
-              $150 за акцию и рост дивидендов — плановые ориентиры, а не гарантия.
-              Фактическая стоимость зависит от результатов холдинга и условий выпуска акций.
+              Оценки $50, $120 и $150 за акцию — расчётные ориентиры, а не гарантированная цена продажи.
+              Модель предполагает, что $5 000 — ежемесячный доход RS Holding с одной франшизы.
             </p>
           </div>
 
@@ -1469,7 +1430,7 @@ export default function Home() {
                     ? "Предложение: капитал с фиксированным доходом"
                     : product === "clinic"
                       ? "Предложение: доля в клинике"
-                      : "Предложение: акции холдинга R.I.C.H."}
+                      : "Предложение: акции RS Holding"}
                 </small>
               </span>
             </div>
@@ -1486,7 +1447,7 @@ export default function Home() {
                 ? `Срок ${termLabel(months)}, фиксированная ставка ${annualRate}% годовых, выбранный способ — ${selectedMode.short.toLowerCase()}.`
                 : product === "clinic"
                   ? `${clinicShare}% доли клиники, сценарий «${clinicScenario.title}», горизонт расчёта — ${termLabel(months)}.`
-                  : `Пакет из ${moneyFormatter.format(equityShareCount)} привилегированных акций по $25, базовый дивиденд ${EQUITY_MIN_RETURN}% годовых в USD, плановая цена через 3 года — $150.`}
+                  : `Пакет из ${moneyFormatter.format(equityShareCount)} привилегированных акций RS Holding по $25, базовый дивиденд ${EQUITY_MIN_RETURN}% годовых в USD, расчётная цена через 3 года — ${formatUsd(yearThreeSharePriceUsd)}.`}
             </span>
           </div>
 
@@ -1658,7 +1619,7 @@ export default function Home() {
                       : `Увеличьте пакет ещё на ${moneyFormatter.format(equitySuggestedExtraShares)} акций за ${formatUsd(equitySuggestedExtraUsd)}.`}
                   </strong>
                   <p>
-                    С базовыми дивидендами {EQUITY_MIN_RETURN}% в год и плановой ценой $150 за акцию стоимость пакета через 3 года составит
+                    С базовыми дивидендами {EQUITY_MIN_RETURN}% в год и расчётной ценой {formatUsd(yearThreeSharePriceUsd)} за акцию стоимость пакета через 3 года составит
                     <strong> {formatUsd(equityProjectedTotalUsd)}</strong>.
                     {equityGoalGap > 0
                       ? equityPlanReachesGoal
@@ -1667,8 +1628,8 @@ export default function Home() {
                       : " Чем больше пакет, тем больше сумма дивидендов и потенциальный результат от роста цены."}
                   </p>
                   <small>
-                    Цена $150 и выбранный рост суммы дивидендов — плановые сценарии, а не гарантия.
-                    Фактическая цена и выплаты определяются результатами холдинга и условиями выпуска ценных бумаг.
+                    Переоценка до {formatUsd(yearThreeSharePriceUsd)} за акцию — прогноз, а не гарантия.
+                    Она рассчитана как 2× повторяющийся годовой доход RS Holding; фактическая цена зависит от результатов бизнеса.
                   </small>
                 </>
               ) : product === "equity" ? (
@@ -1681,8 +1642,8 @@ export default function Home() {
                     а плановый итог пакета через 3 года — <strong>{formatUsd(equityTotalUsd)}</strong>.
                   </p>
                   <small>
-                    Цена $150 и рост суммы дивидендов — плановые сценарии, а не гарантия.
-                    Фактическая цена и выплаты определяются результатами холдинга и условиями выпуска ценных бумаг.
+                    Переоценка до {formatUsd(yearThreeSharePriceUsd)} за акцию — прогноз, а не гарантия.
+                    Она рассчитана как 2× повторяющийся годовой доход RS Holding; фактическая цена зависит от результатов бизнеса.
                   </small>
                 </>
               ) : bestScenarioGap > 0 ? (
