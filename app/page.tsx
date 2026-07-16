@@ -95,28 +95,30 @@ const MODES: Array<{
 }> = [
   {
     id: "monthly",
-    short: "Каждый месяц",
-    title: "Ежемесячная выплата",
-    description: "Стандарт: доход выплачивается, тело не увеличивается.",
+    short: "Забирать ежемесячно",
+    title: "Проценты каждый месяц",
+    description: "Деньги приходят сразу, но больше не создают новый доход.",
+    badge: "Доход сейчас",
   },
   {
     id: "quarterly",
-    short: "Каждый квартал",
-    title: "Капитализация раз в квартал",
-    description: "Начисленный доход добавляется к телу каждые 3 месяца.",
+    short: "Оставлять на квартал",
+    title: "Рост каждые 3 месяца",
+    description: "Проценты присоединяются к телу четыре раза в год.",
   },
   {
     id: "yearly",
-    short: "Каждый год",
-    title: "Капитализация раз в год",
-    description: "Доход присоединяется к телу после каждого полного года.",
+    short: "Получить в конце года",
+    title: "Доход работает весь год",
+    description: "В течение года проценты остаются в теле и увеличивают базу.",
+    badge: "Стратегия роста",
   },
   {
     id: "maturity",
-    short: "В конце срока",
-    title: "Всё в конце срока",
-    description: "Доход ежемесячно капитализируется и выплачивается вместе с телом.",
-    badge: "Максимум роста",
+    short: "Получить в конце срока",
+    title: "Максимум сложного процента",
+    description: "Каждый месяц проценты увеличивают тело до полного погашения.",
+    badge: "Рекомендуем",
   },
 ];
 
@@ -273,24 +275,26 @@ export default function Home() {
     [amount, annualRate, months],
   );
 
-  const horizons = useMemo(
-    () =>
-      TERMS.map((term) => ({
-        months: term,
-        rate: getAutomaticRate(amount, term).totalRate,
-        result: calculate(amount, getAutomaticRate(amount, term).totalRate, term, mode),
-      })),
-    [amount, mode],
-  );
-
   const standard = comparisons.find((item) => item.id === "monthly")!.result;
   const maxGrowth = comparisons.find((item) => item.id === "maturity")!.result;
-  const maxProfit = Math.max(...comparisons.map((item) => item.result.profit));
   const selectedMode = MODES.find((item) => item.id === mode)!;
-  const advantage = result.profit - standard.profit;
+  const retentionGain = maxGrowth.profit - standard.profit;
   const goalProgress = goalAmount > 0 ? (result.total / goalAmount) * 100 : 0;
   const goalDifference = result.total - goalAmount;
   const profitGoalShare = goalAmount > 0 ? (result.profit / goalAmount) * 100 : 0;
+  const purchaseExamples = useMemo(() => {
+    const alternatives = GOALS.filter((item) => item.id !== goalId).sort(
+      (a, b) =>
+        Math.abs(a.defaultTarget - result.total) -
+        Math.abs(b.defaultTarget - result.total),
+    );
+
+    return [selectedGoal, ...alternatives.slice(0, 2)].map((goal) => ({
+      ...goal,
+      totalCoverage: (result.total / goal.defaultTarget) * 100,
+      profitCoverage: (result.profit / goal.defaultTarget) * 100,
+    }));
+  }, [goalId, result.profit, result.total, selectedGoal]);
 
   async function copyCalculation() {
     const url = new URL(window.location.href);
@@ -322,6 +326,33 @@ export default function Home() {
 
   function printProposal() {
     window.print();
+  }
+
+  async function shareProposal() {
+    const url = new URL(window.location.href);
+    url.search = new URLSearchParams({
+      amount: String(Math.round(amount)),
+      term: String(months),
+      mode,
+      goal: goalId,
+      target: String(Math.round(goalAmount)),
+      ...(clientName.trim() ? { name: clientName.trim() } : {}),
+    }).toString();
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Персональное предложение ИнвестКапитал",
+          text: `${clientName.trim() || "Инвестор"}: ${formatMoney(amount)} на ${termLabel(months)}, итог ${formatMoney(result.total)}.`,
+          url: url.toString(),
+        });
+        return;
+      } catch {
+        return;
+      }
+    }
+
+    await copyCalculation();
   }
 
   return (
@@ -449,23 +480,59 @@ export default function Home() {
 
           <fieldset className="field-block mode-field">
             <legend>Как получать доход</legend>
+            <p className="mode-lead">
+              Сравните итог: ранняя выплата даёт деньги сегодня, капитализация —
+              больше денег для вашей цели завтра.
+            </p>
+
+            <div className="retention-comparison">
+              <div className="withdraw-now-card">
+                <span>Забирать каждый месяц</span>
+                <strong>{formatMoney(standard.total)}</strong>
+                <small>Проценты перестают работать после выплаты</small>
+              </div>
+              <div className="retain-income-card">
+                <span>Оставить до конца срока</span>
+                <strong>{formatMoney(maxGrowth.total)}</strong>
+                <small>+{formatMoney(retentionGain)} создаёт сложный процент</small>
+              </div>
+            </div>
+
+            <div className="retention-message">
+              <span aria-hidden="true">↗</span>
+              <p>
+                Не забирая проценты, вы увеличиваете тело без новых взносов.
+                В этом расчёте решение подождать создаёт ещё
+                <strong> {formatMoney(retentionGain)}</strong>.
+              </p>
+            </div>
+
             <div className="mode-options">
-              {MODES.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={mode === item.id ? "mode-card active" : "mode-card"}
-                  onClick={() => setMode(item.id)}
-                  aria-pressed={mode === item.id}
-                >
-                  <span className="radio-dot" aria-hidden="true" />
-                  <span className="mode-copy">
-                    <strong>{item.short}</strong>
-                    <small>{item.description}</small>
-                  </span>
-                  {item.badge && <span className="mode-badge">{item.badge}</span>}
-                </button>
-              ))}
+              {MODES.map((item) => {
+                const itemResult = comparisons.find((entry) => entry.id === item.id)!.result;
+                const extraIncome = itemResult.profit - standard.profit;
+
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`mode-card ${item.id === "monthly" ? "withdrawal-mode" : "growth-mode"} ${mode === item.id ? "active" : ""}`}
+                    onClick={() => setMode(item.id)}
+                    aria-pressed={mode === item.id}
+                  >
+                    <span className="radio-dot" aria-hidden="true" />
+                    <span className="mode-copy">
+                      <strong>{item.short}</strong>
+                      <small>{item.description}</small>
+                      <span className="mode-result">Итог {formatMoney(itemResult.total)}</span>
+                      {extraIncome > 1 && (
+                        <span className="mode-extra">+{formatMoney(extraIncome)} к ежемесячным выплатам</span>
+                      )}
+                    </span>
+                    {item.badge && <span className="mode-badge">{item.badge}</span>}
+                  </button>
+                );
+              })}
             </div>
           </fieldset>
         </div>
@@ -519,15 +586,15 @@ export default function Home() {
           <div className="benefit-note">
             <span aria-hidden="true">↗</span>
             <p>
-              {advantage > 1 ? (
+              {mode === "maturity" ? (
                 <>
-                  Капитализация добавит <strong>{formatMoney(advantage)}</strong> к
-                  доходу по сравнению с ежемесячным изъятием процентов.
+                  Вы сохраняете в капитале ещё <strong>{formatMoney(retentionGain)}</strong>,
+                  которое теряется при ежемесячном изъятии процентов.
                 </>
               ) : (
                 <>
-                  При этом сроке итог равен простому доходу. Более частая
-                  капитализация раскрывается на длинном горизонте.
+                  Если оставить проценты до конца срока, итог будет выше ещё на
+                  <strong> {formatMoney(maxGrowth.profit - result.profit)}</strong>.
                 </>
               )}
             </p>
@@ -540,128 +607,29 @@ export default function Home() {
         </aside>
       </section>
 
-      <section className="comparison-section">
-        <div className="section-heading-row">
-          <div>
-            <p className="section-kicker">Сравнение стратегий</p>
-            <h2>Когда проценты остаются в работе</h2>
-          </div>
-          <p>
-            Одинаковые сумма, ставка и срок — отличается только способ выплаты.
-          </p>
-        </div>
-
-        <div className="comparison-list">
-          {comparisons.map((item, index) => (
-            <button
-              type="button"
-              key={item.id}
-              className={mode === item.id ? "comparison-row active" : "comparison-row"}
-              onClick={() => setMode(item.id)}
-            >
-              <span className="comparison-index">0{index + 1}</span>
-              <span className="comparison-name">
-                <strong>{item.title}</strong>
-                <small>Доход {formatMoney(item.result.profit)}</small>
-              </span>
-              <span className="bar-track" aria-hidden="true">
-                <span
-                  className="bar-fill"
-                  style={{ width: `${Math.max(10, (item.result.profit / maxProfit) * 100)}%` }}
-                />
-              </span>
-              <span className="comparison-total">{formatMoney(item.result.total)}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="max-growth-callout">
-          <div>
-            <span>Потенциал без изъятия процентов</span>
-            <strong>
-              +{formatMoney(maxGrowth.profit - standard.profit)} сверх стандарта
-            </strong>
-          </div>
-          <p>
-            На сроке {termLabel(months)} ежемесячная капитализация превращает
-            номинальные {annualRate}% в {percentFormatter.format(maxGrowth.effectiveAnnualRate)}%
-            эффективных годовых.
-          </p>
-        </div>
-      </section>
-
-      <section className="horizon-section">
-        <div className="horizon-copy">
-          <p className="section-kicker">Горизонт инвестора</p>
-          <h2>Долгий срок усиливает результат</h2>
-          <p>
-            Сравните одну и ту же сумму в выбранном режиме. После каждого цикла
-            капитализация работает уже на увеличенное тело.
-          </p>
-          <div className="formula-card">
-            <span>Формула выбранного сценария</span>
-            <strong>
-              {mode === "monthly"
-                ? "Тело + ставка × срок"
-                : mode === "quarterly"
-                  ? "Тело × (1 + ставка / 4)ⁿ"
-                  : mode === "yearly"
-                    ? "Тело × (1 + ставка)ⁿ"
-                    : "Тело × (1 + ставка / 12)ⁿ"}
-            </strong>
-          </div>
-        </div>
-
-        <div className="horizon-table" role="table" aria-label="Сравнение срока инвестиции">
-          <div className="horizon-row horizon-header" role="row">
-            <span role="columnheader">Срок</span>
-            <span role="columnheader">Ставка</span>
-            <span role="columnheader">Доход</span>
-            <span role="columnheader">Итог</span>
-          </div>
-          {horizons.map((item) => (
-            <button
-              key={item.months}
-              type="button"
-              className={months === item.months ? "horizon-row active" : "horizon-row"}
-              onClick={() => setMonths(item.months)}
-              role="row"
-            >
-              <span role="cell">{termLabel(item.months)}</span>
-              <span role="cell">{item.rate}%</span>
-              <strong role="cell">+{formatMoney(item.result.profit)}</strong>
-              <span role="cell">{formatMoney(item.result.total)}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
       <section className="proposal-section" id="proposal">
         <div className="proposal-intro no-print">
           <div>
-            <p className="section-kicker">Персональный оффер</p>
-            <h2>Свяжите расчёт с настоящей целью</h2>
-            <p>
-              Заполните имя, выберите цель и её стоимость. Готовое предложение
-              можно распечатать или сохранить в PDF и передать инвестору.
-            </p>
+            <p className="section-kicker">Готовый оффер</p>
+            <h2>Индивидуальный результат</h2>
+            <p>Имя, цель и все примеры ниже меняются вместе с расчётом.</p>
           </div>
 
-          <div className="proposal-controls">
+          <div className="proposal-controls compact-proposal-controls">
             <label className="proposal-name-field">
-              <span>Имя инвестора</span>
+              <span>Инвестор</span>
               <input
                 type="text"
                 value={clientName}
                 maxLength={80}
-                placeholder="Например, Азамат"
+                placeholder="Имя"
                 onChange={(event) => setClientName(event.target.value)}
               />
             </label>
 
             <fieldset className="goal-fieldset">
-              <legend>Ради чего работает капитал</legend>
-              <div className="goal-options">
+              <legend>Главная цель</legend>
+              <div className="goal-options compact-goals">
                 {GOALS.map((goal) => (
                   <button
                     key={goal.id}
@@ -671,17 +639,14 @@ export default function Home() {
                     aria-pressed={goalId === goal.id}
                   >
                     <span className="goal-icon" aria-hidden="true">{goal.icon}</span>
-                    <span>
-                      <strong>{goal.title}</strong>
-                      <small>{goal.description}</small>
-                    </span>
+                    <strong>{goal.title}</strong>
                   </button>
                 ))}
               </div>
             </fieldset>
 
             <label className="proposal-target-field">
-              <span>Стоимость цели — ориентир можно изменить</span>
+              <span>Ориентир цели</span>
               <div className="input-with-unit">
                 <input
                   type="number"
@@ -712,11 +677,30 @@ export default function Home() {
 
           <div className="proposal-title">
             <p>{clientName.trim() ? `Для ${clientName.trim()}` : "Для будущего инвестора"}</p>
-            <h2>Ваш капитал может стать реальным шагом к цели «{selectedGoal.title}»</h2>
+            <h2>{formatMoney(amount)} начинают работать на цель «{selectedGoal.title}»</h2>
             <span>
-              Вы не просто размещаете деньги под процент. Вы даёте капиталу
-              {` ${termLabel(months)} `}на рост и заранее понимаете, какой результат он создаёт.
+              Срок {termLabel(months)}, фиксированная ставка {annualRate}% годовых,
+              выбранный способ — {selectedMode.short.toLowerCase()}.
             </span>
+          </div>
+
+          <div className="proposal-metrics">
+            <div>
+              <span>Вложение</span>
+              <strong>{formatMoney(amount)}</strong>
+            </div>
+            <div>
+              <span>Расчётный доход</span>
+              <strong>+{formatMoney(result.profit)}</strong>
+            </div>
+            <div>
+              <span>Итоговый капитал</span>
+              <strong>{formatMoney(result.total)}</strong>
+            </div>
+            <div className="proposal-profit-metric">
+              <span>Рост капитала</span>
+              <strong>+{percentFormatter.format((result.profit / amount) * 100)}%</strong>
+            </div>
           </div>
 
           <div className="goal-progress-card">
@@ -741,99 +725,84 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="proposal-metrics">
-            <div>
-              <span>Инвестиция</span>
-              <strong>{formatMoney(amount)}</strong>
+          <div className="purchase-section">
+            <div className="purchase-section-heading">
+              <div>
+                <p className="proposal-label">Что дают эти деньги</p>
+                <h3>Примеры на языке жизненных целей</h3>
+              </div>
+              <small>Ориентиры можно изменить перед печатью</small>
             </div>
-            <div>
-              <span>Фиксированная ставка</span>
-              <strong>{annualRate}% годовых</strong>
-            </div>
-            <div>
-              <span>Срок работы капитала</span>
-              <strong>{termLabel(months)}</strong>
-            </div>
-            <div className="proposal-profit-metric">
-              <span>Расчётный доход</span>
-              <strong>+{formatMoney(result.profit)}</strong>
+            <div className="purchase-example-grid">
+              {purchaseExamples.map((example) => (
+                <div className="purchase-example" key={example.id}>
+                  <span className="purchase-example-icon" aria-hidden="true">{example.icon}</span>
+                  <strong>{example.title}</strong>
+                  <span>
+                    {example.totalCoverage >= 100
+                      ? `Итог покрывает ориентир полностью и оставляет ${formatMoney(result.total - example.defaultTarget)}`
+                      : `Итоговый капитал покрывает ${percentFormatter.format(example.totalCoverage)}% ориентира`}
+                  </span>
+                  <small>
+                    Только заработанный доход — {percentFormatter.format(example.profitCoverage)}% цели
+                  </small>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="proposal-story-grid">
-            <div className="proposal-value-story">
-              <p className="proposal-label">Что этот результат даёт лично вам</p>
+          <div className="compact-offer-summary">
+            <div>
+              <p className="proposal-label">Персональное предложение</p>
               {goalDifference >= 0 ? (
-                <>
-                  <h3>Цель полностью покрывается расчётным капиталом</h3>
-                  <p>
-                    После достижения ориентира «{selectedGoal.title}» остаётся запас
-                    <strong> {formatMoney(goalDifference)}</strong>. Деньги получают
-                    понятное назначение, а решение — измеримый результат.
-                  </p>
-                </>
+                <h3>
+                  Цель «{selectedGoal.title}» покрыта. Запас — {formatMoney(goalDifference)}.
+                </h3>
               ) : (
-                <>
-                  <h3>Один договор закрывает {percentFormatter.format(goalProgress)}% цели</h3>
-                  <p>
-                    До выбранного ориентира останется {formatMoney(Math.abs(goalDifference))},
-                    а один только расчётный доход формирует
-                    <strong> {percentFormatter.format(profitGoalShare)}% стоимости цели</strong>.
-                  </p>
-                </>
+                <h3>
+                  Расчёт формирует {percentFormatter.format(goalProgress)}% цели.
+                  Останется {formatMoney(Math.abs(goalDifference))}.
+                </h3>
               )}
+              <p>
+                Один только доход создаёт {percentFormatter.format(profitGoalShare)}%
+                стоимости выбранной цели.
+              </p>
             </div>
-
-            <div className="proposal-terms-card">
-              <p className="proposal-label">Зафиксированный сценарий</p>
-              <ul>
-                <li><span>Сумма</span><strong>{formatMoney(amount)}</strong></li>
-                <li><span>Ставка</span><strong>{annualRate}% — по сумме и сроку</strong></li>
-                <li><span>Доход</span><strong>{selectedMode.title.toLowerCase()}</strong></li>
-                <li><span>Итог инвестора</span><strong>{formatMoney(result.total)}</strong></li>
-              </ul>
-            </div>
+            <ul>
+              <li><span>Ставка</span><strong>{annualRate}% годовых</strong></li>
+              <li><span>Срок</span><strong>{termLabel(months)}</strong></li>
+              <li><span>Выплата</span><strong>{selectedMode.short}</strong></li>
+              <li><span>Итог</span><strong>{formatMoney(result.total)}</strong></li>
+            </ul>
           </div>
 
-          <div className="proposal-recommendation">
-            <span>Рекомендация для роста капитала</span>
-            {mode === "maturity" ? (
-              <p>
-                Выбран сильнейший сценарий: проценты не изымаются, ежемесячно
-                увеличивают тело и выплачиваются в конце срока. Так время работает
-                на вашу цель без дополнительных вложений.
-              </p>
-            ) : (
-              <p>
-                Если оставить весь доход до конца срока, итог может вырасти до
-                <strong> {formatMoney(maxGrowth.total)}</strong> — это на
-                <strong> {formatMoney(maxGrowth.total - result.total)}</strong> больше
-                текущего сценария выплат.
-              </p>
-            )}
+          <div className="proposal-recommendation compact-recommendation">
+            <span>Рекомендация</span>
+            <p>
+              {mode === "maturity"
+                ? `Проценты остаются в теле весь срок. Это сохраняет ${formatMoney(retentionGain)}, которое теряется при ежемесячном изъятии.`
+                : `Если не забирать проценты до конца срока, итог вырастет ещё на ${formatMoney(maxGrowth.total - result.total)} — до ${formatMoney(maxGrowth.total)}.`}
+            </p>
           </div>
 
-          <div className="proposal-closing">
-            <div>
-              <span>Следующий разумный шаг</span>
-              <strong>Сохранить расчёт и обсудить договор с менеджером</strong>
-              <p>
-                Финальные условия, порядок выплат и обязательства сторон фиксируются
-                в договоре займа. Этот документ помогает принять решение на цифрах.
-              </p>
-            </div>
+          <div className="proposal-closing compact-closing">
             <div className="proposal-signatures">
               <span>Инвестор ____________________</span>
               <span>Менеджер ____________________</span>
             </div>
+            <p>
+              Предварительный расчёт. Финальные условия, порядок начислений и
+              обязательства сторон фиксируются в договоре займа.
+            </p>
           </div>
 
           <div className="proposal-actions no-print">
             <button className="print-button" type="button" onClick={printProposal}>
               Печать / сохранить в PDF <span aria-hidden="true">↗</span>
             </button>
-            <button className="secondary-share-button" type="button" onClick={copyCalculation}>
-              {copied ? "Ссылка скопирована" : "Скопировать ссылку на расчёт"}
+            <button className="secondary-share-button" type="button" onClick={shareProposal}>
+              Отправить предложение
             </button>
           </div>
         </article>
