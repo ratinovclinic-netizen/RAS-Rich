@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 type ModeId = "monthly" | "quarterly" | "yearly" | "maturity";
+type GoalId = "car" | "home" | "education" | "security" | "business" | "freedom";
 
 type Calculation = {
   total: number;
@@ -16,6 +17,74 @@ type Calculation = {
 const MIN_AMOUNT = 500_000;
 const MAX_AMOUNT = 10_000_000;
 const TERMS = [6, 12, 24, 36] as const;
+
+const AMOUNT_TIERS = [
+  { min: 500_000, rate: 18, label: "от 500 000 сом" },
+  { min: 1_000_000, rate: 20, label: "от 1 000 000 сом" },
+  { min: 2_000_000, rate: 22, label: "от 2 000 000 сом" },
+  { min: 3_000_000, rate: 24, label: "от 3 000 000 сом" },
+  { min: 5_000_000, rate: 26, label: "от 5 000 000 сом" },
+  { min: 7_000_000, rate: 28, label: "от 7 000 000 сом" },
+  { min: 10_000_000, rate: 30, label: "10 000 000 сом" },
+] as const;
+
+const TERM_BONUS: Record<number, number> = {
+  6: 0,
+  12: 2,
+  24: 4,
+  36: 6,
+};
+
+const GOALS: Array<{
+  id: GoalId;
+  icon: string;
+  title: string;
+  description: string;
+  defaultTarget: number;
+}> = [
+  {
+    id: "car",
+    icon: "🚙",
+    title: "Автомобиль",
+    description: "Новая машина без потери основного капитала",
+    defaultTarget: 3_000_000,
+  },
+  {
+    id: "home",
+    icon: "🏠",
+    title: "Квартира",
+    description: "Первоначальный взнос или собственное жильё",
+    defaultTarget: 8_000_000,
+  },
+  {
+    id: "education",
+    icon: "🎓",
+    title: "Учёба детям",
+    description: "Образование и сильный старт для семьи",
+    defaultTarget: 2_500_000,
+  },
+  {
+    id: "security",
+    icon: "🛡️",
+    title: "Запас для семьи",
+    description: "Финансовая защита и уверенность в будущем",
+    defaultTarget: 4_000_000,
+  },
+  {
+    id: "business",
+    icon: "🚀",
+    title: "Свой бизнес",
+    description: "Капитал для запуска или расширения дела",
+    defaultTarget: 5_000_000,
+  },
+  {
+    id: "freedom",
+    icon: "🌿",
+    title: "Свободный капитал",
+    description: "Деньги, которые дают больше вариантов",
+    defaultTarget: 10_000_000,
+  },
+];
 
 const MODES: Array<{
   id: ModeId;
@@ -62,6 +131,20 @@ const percentFormatter = new Intl.NumberFormat("ru-RU", {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
+}
+
+function getAutomaticRate(amount: number, months: number) {
+  const amountTier = [...AMOUNT_TIERS]
+    .reverse()
+    .find((tier) => amount >= tier.min) ?? AMOUNT_TIERS[0];
+  const termBonus = TERM_BONUS[months] ?? 0;
+
+  return {
+    baseRate: amountTier.rate,
+    termBonus,
+    totalRate: Math.min(36, amountTier.rate + termBonus),
+    amountTier,
+  };
 }
 
 function calculate(
@@ -135,29 +218,44 @@ function termLabel(months: number) {
 
 export default function Home() {
   const [amount, setAmount] = useState(2_000_000);
-  const [annualRate, setAnnualRate] = useState(24);
   const [months, setMonths] = useState<number>(36);
   const [mode, setMode] = useState<ModeId>("maturity");
   const [copied, setCopied] = useState(false);
+  const [clientName, setClientName] = useState("");
+  const [goalId, setGoalId] = useState<GoalId>("home");
+  const [goalAmount, setGoalAmount] = useState(8_000_000);
+
+  const rateDetails = getAutomaticRate(amount, months);
+  const annualRate = rateDetails.totalRate;
+  const selectedGoal = GOALS.find((item) => item.id === goalId)!;
+  const nextAmountTier = AMOUNT_TIERS.find((tier) => tier.min > amount);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const amountParam = Number(params.get("amount"));
-    const rateParam = Number(params.get("rate"));
     const termParam = Number(params.get("term"));
     const modeParam = params.get("mode") as ModeId | null;
+    const goalParam = params.get("goal") as GoalId | null;
+    const targetParam = Number(params.get("target"));
+    const nameParam = params.get("name");
 
     if (Number.isFinite(amountParam) && amountParam > 0) {
       setAmount(clamp(amountParam, MIN_AMOUNT, MAX_AMOUNT));
-    }
-    if (Number.isFinite(rateParam) && rateParam > 0) {
-      setAnnualRate(clamp(rateParam, 18, 36));
     }
     if (TERMS.includes(termParam as (typeof TERMS)[number])) {
       setMonths(termParam);
     }
     if (MODES.some((item) => item.id === modeParam)) {
       setMode(modeParam as ModeId);
+    }
+    if (GOALS.some((item) => item.id === goalParam)) {
+      setGoalId(goalParam as GoalId);
+    }
+    if (Number.isFinite(targetParam) && targetParam > 0) {
+      setGoalAmount(targetParam);
+    }
+    if (nameParam) {
+      setClientName(nameParam.slice(0, 80));
     }
   }, []);
 
@@ -179,9 +277,10 @@ export default function Home() {
     () =>
       TERMS.map((term) => ({
         months: term,
-        result: calculate(amount, annualRate, term, mode),
+        rate: getAutomaticRate(amount, term).totalRate,
+        result: calculate(amount, getAutomaticRate(amount, term).totalRate, term, mode),
       })),
-    [amount, annualRate, mode],
+    [amount, mode],
   );
 
   const standard = comparisons.find((item) => item.id === "monthly")!.result;
@@ -189,14 +288,19 @@ export default function Home() {
   const maxProfit = Math.max(...comparisons.map((item) => item.result.profit));
   const selectedMode = MODES.find((item) => item.id === mode)!;
   const advantage = result.profit - standard.profit;
+  const goalProgress = goalAmount > 0 ? (result.total / goalAmount) * 100 : 0;
+  const goalDifference = result.total - goalAmount;
+  const profitGoalShare = goalAmount > 0 ? (result.profit / goalAmount) * 100 : 0;
 
   async function copyCalculation() {
     const url = new URL(window.location.href);
     url.search = new URLSearchParams({
       amount: String(Math.round(amount)),
-      rate: String(annualRate),
       term: String(months),
       mode,
+      goal: goalId,
+      target: String(Math.round(goalAmount)),
+      ...(clientName.trim() ? { name: clientName.trim() } : {}),
     }).toString();
 
     try {
@@ -208,6 +312,16 @@ export default function Home() {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     }
+  }
+
+  function selectGoal(id: GoalId) {
+    const goal = GOALS.find((item) => item.id === id)!;
+    setGoalId(id);
+    setGoalAmount(goal.defaultTarget);
+  }
+
+  function printProposal() {
+    window.print();
   }
 
   return (
@@ -282,36 +396,38 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="field-block">
-            <label htmlFor="rate">Годовая ставка</label>
-            <div className="input-with-unit rate-input">
-              <input
-                id="rate"
-                type="number"
-                min={18}
-                max={36}
-                step={0.5}
-                value={annualRate}
-                onChange={(event) =>
-                  setAnnualRate(clamp(Number(event.target.value), 18, 36))
-                }
-              />
-              <span>%</span>
+          <div className="field-block automatic-rate-block">
+            <div className="automatic-rate-heading">
+              <div>
+                <span>Ставка по выбранным условиям</span>
+                <strong>{annualRate}% годовых</strong>
+              </div>
+              <span className="locked-rate">Назначена автоматически</span>
             </div>
-            <input
-              className="range-input"
-              aria-label="Годовая ставка от 18 до 36 процентов"
-              type="range"
-              min={18}
-              max={36}
-              step={0.5}
-              value={annualRate}
-              onChange={(event) => setAnnualRate(Number(event.target.value))}
-            />
-            <div className="range-labels">
-              <span>18%</span>
-              <span>36%</span>
+            <div className="rate-breakdown">
+              <div>
+                <span>За сумму</span>
+                <strong>{rateDetails.baseRate}%</strong>
+                <small>{rateDetails.amountTier.label}</small>
+              </div>
+              <span className="rate-plus">+</span>
+              <div>
+                <span>За срок</span>
+                <strong>{rateDetails.termBonus}%</strong>
+                <small>{termLabel(months)}</small>
+              </div>
+              <span className="rate-equals">=</span>
+              <div className="rate-total">
+                <span>Итого</span>
+                <strong>{annualRate}%</strong>
+                <small>фиксировано условиями</small>
+              </div>
             </div>
+            <p className="rate-hint">
+              {nextAmountTier
+                ? `При сумме от ${moneyFormatter.format(nextAmountTier.min)} сом базовая ставка вырастет до ${nextAmountTier.rate}%. Длинный срок добавляет до 6%.`
+                : "Вы выбрали максимальную сумму. Срок 3 года открывает максимальную ставку 36%."}
+            </p>
           </div>
 
           <fieldset className="field-block">
@@ -499,6 +615,7 @@ export default function Home() {
         <div className="horizon-table" role="table" aria-label="Сравнение срока инвестиции">
           <div className="horizon-row horizon-header" role="row">
             <span role="columnheader">Срок</span>
+            <span role="columnheader">Ставка</span>
             <span role="columnheader">Доход</span>
             <span role="columnheader">Итог</span>
           </div>
@@ -511,11 +628,215 @@ export default function Home() {
               role="row"
             >
               <span role="cell">{termLabel(item.months)}</span>
+              <span role="cell">{item.rate}%</span>
               <strong role="cell">+{formatMoney(item.result.profit)}</strong>
               <span role="cell">{formatMoney(item.result.total)}</span>
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="proposal-section" id="proposal">
+        <div className="proposal-intro no-print">
+          <div>
+            <p className="section-kicker">Персональный оффер</p>
+            <h2>Свяжите расчёт с настоящей целью</h2>
+            <p>
+              Заполните имя, выберите цель и её стоимость. Готовое предложение
+              можно распечатать или сохранить в PDF и передать инвестору.
+            </p>
+          </div>
+
+          <div className="proposal-controls">
+            <label className="proposal-name-field">
+              <span>Имя инвестора</span>
+              <input
+                type="text"
+                value={clientName}
+                maxLength={80}
+                placeholder="Например, Азамат"
+                onChange={(event) => setClientName(event.target.value)}
+              />
+            </label>
+
+            <fieldset className="goal-fieldset">
+              <legend>Ради чего работает капитал</legend>
+              <div className="goal-options">
+                {GOALS.map((goal) => (
+                  <button
+                    key={goal.id}
+                    type="button"
+                    className={goalId === goal.id ? "goal-card active" : "goal-card"}
+                    onClick={() => selectGoal(goal.id)}
+                    aria-pressed={goalId === goal.id}
+                  >
+                    <span className="goal-icon" aria-hidden="true">{goal.icon}</span>
+                    <span>
+                      <strong>{goal.title}</strong>
+                      <small>{goal.description}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <label className="proposal-target-field">
+              <span>Стоимость цели — ориентир можно изменить</span>
+              <div className="input-with-unit">
+                <input
+                  type="number"
+                  min={100_000}
+                  step={100_000}
+                  value={goalAmount}
+                  onChange={(event) =>
+                    setGoalAmount(Math.max(100_000, Number(event.target.value)))
+                  }
+                />
+                <span>сом</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <article className="proposal-sheet">
+          <header className="proposal-header">
+            <div className="proposal-brand">
+              <span className="brand-mark" aria-hidden="true">И</span>
+              <span>
+                <strong>ИнвестКапитал</strong>
+                <small>Персональное инвестиционное предложение</small>
+              </span>
+            </div>
+            <span className="proposal-status">Предварительный расчёт</span>
+          </header>
+
+          <div className="proposal-title">
+            <p>{clientName.trim() ? `Для ${clientName.trim()}` : "Для будущего инвестора"}</p>
+            <h2>Ваш капитал может стать реальным шагом к цели «{selectedGoal.title}»</h2>
+            <span>
+              Вы не просто размещаете деньги под процент. Вы даёте капиталу
+              {` ${termLabel(months)} `}на рост и заранее понимаете, какой результат он создаёт.
+            </span>
+          </div>
+
+          <div className="goal-progress-card">
+            <div className="goal-progress-copy">
+              <span className="proposal-goal-icon" aria-hidden="true">{selectedGoal.icon}</span>
+              <div>
+                <small>Ваша цель</small>
+                <strong>{selectedGoal.title}</strong>
+                <span>{selectedGoal.description}</span>
+              </div>
+            </div>
+            <div className="goal-progress-number">
+              <strong>{percentFormatter.format(goalProgress)}%</strong>
+              <span>цели покрывает итоговый капитал</span>
+            </div>
+            <div className="goal-progress-track" aria-hidden="true">
+              <span style={{ width: `${Math.min(100, Math.max(2, goalProgress))}%` }} />
+            </div>
+            <div className="goal-progress-values">
+              <span>Итог: {formatMoney(result.total)}</span>
+              <span>Цель: {formatMoney(goalAmount)}</span>
+            </div>
+          </div>
+
+          <div className="proposal-metrics">
+            <div>
+              <span>Инвестиция</span>
+              <strong>{formatMoney(amount)}</strong>
+            </div>
+            <div>
+              <span>Фиксированная ставка</span>
+              <strong>{annualRate}% годовых</strong>
+            </div>
+            <div>
+              <span>Срок работы капитала</span>
+              <strong>{termLabel(months)}</strong>
+            </div>
+            <div className="proposal-profit-metric">
+              <span>Расчётный доход</span>
+              <strong>+{formatMoney(result.profit)}</strong>
+            </div>
+          </div>
+
+          <div className="proposal-story-grid">
+            <div className="proposal-value-story">
+              <p className="proposal-label">Что этот результат даёт лично вам</p>
+              {goalDifference >= 0 ? (
+                <>
+                  <h3>Цель полностью покрывается расчётным капиталом</h3>
+                  <p>
+                    После достижения ориентира «{selectedGoal.title}» остаётся запас
+                    <strong> {formatMoney(goalDifference)}</strong>. Деньги получают
+                    понятное назначение, а решение — измеримый результат.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3>Один договор закрывает {percentFormatter.format(goalProgress)}% цели</h3>
+                  <p>
+                    До выбранного ориентира останется {formatMoney(Math.abs(goalDifference))},
+                    а один только расчётный доход формирует
+                    <strong> {percentFormatter.format(profitGoalShare)}% стоимости цели</strong>.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="proposal-terms-card">
+              <p className="proposal-label">Зафиксированный сценарий</p>
+              <ul>
+                <li><span>Сумма</span><strong>{formatMoney(amount)}</strong></li>
+                <li><span>Ставка</span><strong>{annualRate}% — по сумме и сроку</strong></li>
+                <li><span>Доход</span><strong>{selectedMode.title.toLowerCase()}</strong></li>
+                <li><span>Итог инвестора</span><strong>{formatMoney(result.total)}</strong></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="proposal-recommendation">
+            <span>Рекомендация для роста капитала</span>
+            {mode === "maturity" ? (
+              <p>
+                Выбран сильнейший сценарий: проценты не изымаются, ежемесячно
+                увеличивают тело и выплачиваются в конце срока. Так время работает
+                на вашу цель без дополнительных вложений.
+              </p>
+            ) : (
+              <p>
+                Если оставить весь доход до конца срока, итог может вырасти до
+                <strong> {formatMoney(maxGrowth.total)}</strong> — это на
+                <strong> {formatMoney(maxGrowth.total - result.total)}</strong> больше
+                текущего сценария выплат.
+              </p>
+            )}
+          </div>
+
+          <div className="proposal-closing">
+            <div>
+              <span>Следующий разумный шаг</span>
+              <strong>Сохранить расчёт и обсудить договор с менеджером</strong>
+              <p>
+                Финальные условия, порядок выплат и обязательства сторон фиксируются
+                в договоре займа. Этот документ помогает принять решение на цифрах.
+              </p>
+            </div>
+            <div className="proposal-signatures">
+              <span>Инвестор ____________________</span>
+              <span>Менеджер ____________________</span>
+            </div>
+          </div>
+
+          <div className="proposal-actions no-print">
+            <button className="print-button" type="button" onClick={printProposal}>
+              Печать / сохранить в PDF <span aria-hidden="true">↗</span>
+            </button>
+            <button className="secondary-share-button" type="button" onClick={copyCalculation}>
+              {copied ? "Ссылка скопирована" : "Скопировать ссылку на расчёт"}
+            </button>
+          </div>
+        </article>
       </section>
 
       <footer>

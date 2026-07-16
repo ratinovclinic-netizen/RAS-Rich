@@ -48,6 +48,7 @@ button {
 .calculator-grid,
 .comparison-section,
 .horizon-section,
+.proposal-section,
 footer {
   width: min(1240px, calc(100% - 48px));
   margin-inline: auto;
@@ -277,8 +278,116 @@ footer {
   font-size: 13px;
 }
 
-.rate-input {
-  max-width: 230px;
+.automatic-rate-block {
+  padding: 20px;
+  border: 1px solid rgba(20, 62, 50, 0.18);
+  border-radius: 14px;
+  background: #eef4ed;
+}
+
+.automatic-rate-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 17px;
+  border-bottom: 1px solid rgba(20, 62, 50, 0.13);
+}
+
+.automatic-rate-heading > div > span,
+.automatic-rate-heading > div > strong {
+  display: block;
+}
+
+.automatic-rate-heading > div > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.automatic-rate-heading > div > strong {
+  margin-top: 4px;
+  color: var(--green);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 30px;
+  font-weight: 600;
+}
+
+.locked-rate {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: var(--green);
+  color: var(--lime);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.rate-breakdown {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1.15fr;
+  gap: 12px;
+  align-items: center;
+  padding: 18px 0 13px;
+}
+
+.rate-breakdown > div > span,
+.rate-breakdown > div > strong,
+.rate-breakdown > div > small {
+  display: block;
+}
+
+.rate-breakdown > div > span {
+  color: var(--muted);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.rate-breakdown > div > strong {
+  margin-top: 3px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 22px;
+}
+
+.rate-breakdown > div > small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 8.5px;
+}
+
+.rate-plus,
+.rate-equals {
+  color: #91a198;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 23px;
+}
+
+.rate-total {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--green);
+  color: var(--white);
+}
+
+.rate-total > span,
+.rate-total > small {
+  color: rgba(255, 255, 255, 0.58) !important;
+}
+
+.rate-total > strong {
+  color: var(--lime);
+}
+
+.rate-hint {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(20, 62, 50, 0.13);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
 }
 
 .range-input {
@@ -806,7 +915,7 @@ footer {
   width: 100%;
   min-height: 68px;
   display: grid;
-  grid-template-columns: 0.6fr 1fr 1fr;
+  grid-template-columns: 0.7fr 0.55fr 1fr 1fr;
   gap: 20px;
   align-items: center;
   padding: 0 12px;
@@ -856,6 +965,572 @@ button.horizon-row:focus-visible,
   font-size: 9px;
 }
 
+.proposal-section {
+  padding: 112px 0 72px;
+}
+
+.proposal-intro {
+  display: grid;
+  grid-template-columns: 0.62fr 1.38fr;
+  gap: 72px;
+  align-items: start;
+  margin-bottom: 45px;
+}
+
+.proposal-intro h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(34px, 4vw, 52px);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1.04;
+}
+
+.proposal-intro > div:first-child > p:last-child {
+  max-width: 430px;
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.proposal-controls {
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+}
+
+.proposal-name-field,
+.proposal-target-field {
+  display: block;
+}
+
+.proposal-name-field > span,
+.proposal-target-field > span,
+.goal-fieldset legend {
+  display: block;
+  margin-bottom: 9px;
+  padding: 0;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.proposal-name-field input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  outline: 0;
+  background: #fbfaf5;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.proposal-name-field input:focus {
+  border-color: var(--green-light);
+  box-shadow: 0 0 0 4px rgba(31, 91, 73, 0.09);
+}
+
+.goal-fieldset {
+  margin: 25px 0;
+  padding: 0;
+  border: 0;
+}
+
+.goal-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.goal-card {
+  min-height: 92px;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 9px;
+  align-items: start;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fbfaf5;
+  text-align: left;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.goal-card:hover,
+.goal-card:focus-visible {
+  border-color: var(--green-light);
+  transform: translateY(-1px);
+}
+
+.goal-card.active {
+  border-color: var(--green-light);
+  background: #eef4ed;
+  box-shadow: inset 0 0 0 1px var(--green-light);
+}
+
+.goal-icon {
+  font-size: 21px;
+  line-height: 1;
+}
+
+.goal-card strong,
+.goal-card small {
+  display: block;
+}
+
+.goal-card strong {
+  font-size: 11px;
+}
+
+.goal-card small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 8.5px;
+  line-height: 1.35;
+}
+
+.proposal-target-field .input-with-unit {
+  height: 50px;
+}
+
+.proposal-target-field .input-with-unit input {
+  font-size: 22px;
+}
+
+.proposal-sheet {
+  padding: 46px 52px 50px;
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  background: var(--surface);
+  box-shadow: 0 30px 80px rgba(30, 43, 37, 0.09);
+}
+
+.proposal-header {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.proposal-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.proposal-brand strong,
+.proposal-brand small {
+  display: block;
+}
+
+.proposal-brand strong {
+  font-size: 15px;
+}
+
+.proposal-brand small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.proposal-status {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.proposal-title {
+  max-width: 900px;
+  padding: 48px 0 36px;
+}
+
+.proposal-title > p {
+  margin: 0 0 10px;
+  color: var(--green-light);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.proposal-title h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(36px, 4.5vw, 58px);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+}
+
+.proposal-title > span {
+  display: block;
+  max-width: 750px;
+  margin-top: 19px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.goal-progress-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px 30px;
+  padding: 27px 30px;
+  border: 1px solid rgba(20, 62, 50, 0.14);
+  border-radius: 18px;
+  background: #eef4ed;
+}
+
+.goal-progress-copy {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.proposal-goal-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+  font-size: 24px;
+}
+
+.goal-progress-copy small,
+.goal-progress-copy strong,
+.goal-progress-copy div > span {
+  display: block;
+}
+
+.goal-progress-copy small {
+  color: var(--muted);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.goal-progress-copy strong {
+  margin-top: 2px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 21px;
+  font-weight: 500;
+}
+
+.goal-progress-copy div > span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.goal-progress-number {
+  text-align: right;
+}
+
+.goal-progress-number strong,
+.goal-progress-number span {
+  display: block;
+}
+
+.goal-progress-number strong {
+  color: var(--green);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.goal-progress-number span {
+  max-width: 170px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 8.5px;
+}
+
+.goal-progress-track {
+  grid-column: 1 / -1;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(20, 62, 50, 0.11);
+  overflow: hidden;
+}
+
+.goal-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green-light), #92c453);
+}
+
+.goal-progress-values {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.proposal-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 24px;
+  border-block: 1px solid var(--line);
+}
+
+.proposal-metrics > div {
+  min-width: 0;
+  padding: 22px 20px;
+  border-right: 1px solid var(--line);
+}
+
+.proposal-metrics > div:first-child {
+  padding-left: 0;
+}
+
+.proposal-metrics > div:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+.proposal-metrics span,
+.proposal-metrics strong {
+  display: block;
+}
+
+.proposal-metrics span {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.proposal-metrics strong {
+  margin-top: 7px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.proposal-profit-metric strong {
+  color: var(--green-light);
+}
+
+.proposal-story-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 24px;
+  padding: 32px 0;
+}
+
+.proposal-value-story,
+.proposal-terms-card {
+  padding: 25px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+}
+
+.proposal-value-story {
+  background: #fbfaf5;
+}
+
+.proposal-label {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.proposal-value-story h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 25px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.proposal-value-story > p:last-child {
+  margin: 13px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.proposal-value-story strong {
+  color: var(--ink);
+}
+
+.proposal-terms-card {
+  background: var(--green);
+  color: var(--white);
+}
+
+.proposal-terms-card .proposal-label {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.proposal-terms-card ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.proposal-terms-card li {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.13);
+}
+
+.proposal-terms-card li:last-child {
+  border-bottom: 0;
+}
+
+.proposal-terms-card li span {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 9px;
+}
+
+.proposal-terms-card li strong {
+  max-width: 62%;
+  color: var(--lime);
+  font-size: 10px;
+  text-align: right;
+}
+
+.proposal-recommendation {
+  display: grid;
+  grid-template-columns: 0.32fr 0.68fr;
+  gap: 30px;
+  align-items: start;
+  padding: 26px 28px;
+  border-radius: 15px;
+  background: #e5eadb;
+}
+
+.proposal-recommendation > span {
+  color: var(--green-light);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.proposal-recommendation p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.proposal-recommendation strong {
+  color: var(--ink);
+}
+
+.proposal-closing {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 50px;
+  align-items: end;
+  padding: 35px 0 10px;
+}
+
+.proposal-closing > div:first-child > span,
+.proposal-closing > div:first-child > strong {
+  display: block;
+}
+
+.proposal-closing > div:first-child > span {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.proposal-closing > div:first-child > strong {
+  margin-top: 7px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 21px;
+  font-weight: 500;
+}
+
+.proposal-closing p {
+  max-width: 680px;
+  margin: 9px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.proposal-signatures {
+  display: flex;
+  gap: 24px;
+  color: var(--muted);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.proposal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 27px;
+  padding-top: 27px;
+  border-top: 1px solid var(--line);
+}
+
+.print-button,
+.secondary-share-button {
+  min-height: 52px;
+  padding: 0 20px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.print-button {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  border: 0;
+  background: var(--green);
+  color: var(--lime);
+}
+
+.secondary-share-button {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+}
+
+.print-button:hover,
+.print-button:focus-visible,
+.secondary-share-button:hover,
+.secondary-share-button:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(30, 43, 37, 0.1);
+}
+
 footer {
   min-height: 120px;
   display: flex;
@@ -895,6 +1570,36 @@ footer p {
     gap: 50px;
     padding: 60px 46px;
   }
+
+  .proposal-intro,
+  .proposal-story-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .proposal-intro {
+    gap: 34px;
+  }
+
+  .proposal-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .proposal-metrics > div:nth-child(2) {
+    border-right: 0;
+  }
+
+  .proposal-metrics > div:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
+  }
+
+  .proposal-metrics > div:nth-child(3) {
+    padding-left: 0;
+  }
+
+  .proposal-closing {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
 }
 
 @media (max-width: 720px) {
@@ -903,6 +1608,7 @@ footer p {
   .calculator-grid,
   .comparison-section,
   .horizon-section,
+  .proposal-section,
   footer {
     width: min(100% - 24px, 1240px);
   }
@@ -1009,12 +1715,118 @@ footer p {
   }
 
   .horizon-row {
-    grid-template-columns: 0.7fr 1fr;
+    grid-template-columns: 0.75fr 0.55fr 1fr;
     gap: 10px;
   }
 
   .horizon-row > span:last-child {
     display: none;
+  }
+
+  .automatic-rate-heading {
+    display: block;
+  }
+
+  .locked-rate {
+    display: inline-block;
+    margin-top: 10px;
+  }
+
+  .rate-breakdown {
+    grid-template-columns: 1fr auto 1fr;
+  }
+
+  .rate-equals {
+    display: none;
+  }
+
+  .rate-total {
+    grid-column: 1 / -1;
+  }
+
+  .goal-options {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .proposal-section {
+    padding: 76px 0 45px;
+  }
+
+  .proposal-controls,
+  .proposal-sheet {
+    padding: 24px 20px;
+    border-radius: 20px;
+  }
+
+  .proposal-header,
+  .proposal-closing {
+    align-items: flex-start;
+  }
+
+  .proposal-header {
+    display: block;
+  }
+
+  .proposal-status {
+    display: inline-block;
+    margin-top: 15px;
+  }
+
+  .proposal-title {
+    padding: 34px 0 28px;
+  }
+
+  .proposal-title h2 {
+    font-size: 34px;
+  }
+
+  .goal-progress-card {
+    grid-template-columns: 1fr;
+    padding: 22px 18px;
+  }
+
+  .goal-progress-number {
+    text-align: left;
+  }
+
+  .goal-progress-number span {
+    max-width: none;
+  }
+
+  .proposal-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .proposal-metrics > div,
+  .proposal-metrics > div:first-child,
+  .proposal-metrics > div:nth-child(3),
+  .proposal-metrics > div:last-child {
+    padding: 16px 0;
+    border-right: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .proposal-metrics > div:first-child {
+    border-top: 0;
+  }
+
+  .proposal-recommendation {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 22px;
+  }
+
+  .proposal-signatures,
+  .proposal-actions {
+    flex-direction: column;
+  }
+
+  .proposal-signatures {
+    white-space: normal;
+  }
+
+  .secondary-share-button {
+    width: 100%;
   }
 
   footer {
@@ -1030,12 +1842,148 @@ footer p {
     grid-template-columns: 1fr;
   }
 
+  .goal-options {
+    grid-template-columns: 1fr;
+  }
+
   .mode-card {
     min-height: 96px;
   }
 
   .primary-result strong {
     font-size: 36px;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #18231f !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .site-shell > * {
+    display: none !important;
+  }
+
+  .site-shell > .proposal-section {
+    display: block !important;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .no-print,
+  .proposal-intro {
+    display: none !important;
+  }
+
+  .proposal-sheet {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .proposal-header {
+    min-height: 42px;
+    padding-bottom: 12px;
+  }
+
+  .proposal-header .brand-mark {
+    width: 34px;
+    height: 34px;
+    font-size: 18px;
+  }
+
+  .proposal-title {
+    padding: 20px 0 16px;
+  }
+
+  .proposal-title h2 {
+    max-width: 170mm;
+    font-size: 29px;
+  }
+
+  .proposal-title > span {
+    margin-top: 10px;
+    font-size: 9px;
+  }
+
+  .goal-progress-card {
+    gap: 10px 20px;
+    padding: 15px 18px;
+    break-inside: avoid;
+  }
+
+  .proposal-goal-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 19px;
+  }
+
+  .goal-progress-number strong {
+    font-size: 27px;
+  }
+
+  .proposal-metrics {
+    margin-top: 13px;
+    break-inside: avoid;
+  }
+
+  .proposal-metrics > div {
+    padding: 12px 11px;
+  }
+
+  .proposal-metrics strong {
+    font-size: 14px;
+  }
+
+  .proposal-story-grid {
+    gap: 12px;
+    padding: 16px 0;
+    break-inside: avoid;
+  }
+
+  .proposal-value-story,
+  .proposal-terms-card {
+    padding: 15px;
+  }
+
+  .proposal-value-story h3 {
+    font-size: 19px;
+  }
+
+  .proposal-value-story > p:last-child,
+  .proposal-recommendation p {
+    font-size: 8.5px;
+  }
+
+  .proposal-terms-card li {
+    padding: 7px 0;
+  }
+
+  .proposal-recommendation {
+    gap: 18px;
+    padding: 15px 18px;
+    break-inside: avoid;
+  }
+
+  .proposal-closing {
+    gap: 20px;
+    padding: 18px 0 0;
+    break-inside: avoid;
+  }
+
+  .proposal-closing > div:first-child > strong {
+    font-size: 16px;
   }
 }
 
