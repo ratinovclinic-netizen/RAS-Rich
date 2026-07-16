@@ -1329,8 +1329,69 @@ footer {
   font-size: 8.5px;
 }
 
+.equity-kgs-equivalent strong {
+  color: var(--green);
+}
+
 .equity-scenario-options button {
   min-height: 112px;
+}
+
+.dividend-growth-help {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.equity-roadmap {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.equity-roadmap > div {
+  position: relative;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fffef9;
+}
+
+.equity-roadmap span,
+.equity-roadmap strong,
+.equity-roadmap small,
+.equity-roadmap em {
+  display: block;
+}
+
+.equity-roadmap span {
+  color: var(--green);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.equity-roadmap strong {
+  margin-top: 5px;
+  font-size: 10px;
+}
+
+.equity-roadmap small {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.equity-roadmap em {
+  margin-top: 7px;
+  color: #a87518;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
 }
 
 .equity-assumption-note {
@@ -1433,6 +1494,39 @@ footer {
 .equity-growth-engine strong {
   color: var(--lime);
   font-size: 9px;
+}
+
+.equity-network-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.equity-network-summary > div {
+  min-width: 0;
+  padding: 11px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.equity-network-summary span,
+.equity-network-summary strong {
+  display: block;
+}
+
+.equity-network-summary span {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 7.5px;
+  line-height: 1.35;
+}
+
+.equity-network-summary strong {
+  margin-top: 5px;
+  color: var(--white);
+  font-size: 9px;
+  overflow-wrap: anywhere;
 }
 
 .equity-risk-note {
@@ -3024,6 +3118,11 @@ footer p {
   .term-options,
   .mode-options {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .equity-roadmap,
+  .equity-network-summary {
+    grid-template-columns: 1fr;
   }
 
   .term-options button {

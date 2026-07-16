@@ -32,6 +32,10 @@ const DOWN_PAYMENT_SHARE = 0.3;
 const CLINIC_SHARE_PRICE = 800_000;
 const CLINIC_USD_RATE = 87.5;
 const EQUITY_MIN_RETURN = 14;
+const TOTAL_HOLDING_SHARES = 1_000_000;
+const PREFERRED_SHARES_FOR_SALE = 300_000;
+const CURRENT_SHARE_PRICE_USD = 25;
+const TARGET_SHARE_PRICE_USD = 150;
 const TERMS = [6, 12, 24, 36] as const;
 
 const HOLDING_CLINICS_BY_YEAR: Record<number, number> = {
@@ -306,6 +310,7 @@ export default function Home() {
   const [clinicScenarioId, setClinicScenarioId] = useState<ClinicScenarioId>("base");
   const [equityInvestmentUsd, setEquityInvestmentUsd] = useState(10_000);
   const [equityScenarioId, setEquityScenarioId] = useState<EquityScenarioId>("base");
+  const [equityDividendGrowth, setEquityDividendGrowth] = useState(0);
   const [copied, setCopied] = useState(false);
   const [clientName, setClientName] = useState("");
   const [goalId, setGoalId] = useState<GoalId>("preserve");
@@ -316,6 +321,8 @@ export default function Home() {
   const selectedGoal = GOALS.find((item) => item.id === goalId)!;
   const nextAmountTier = AMOUNT_TIERS.find((tier) => tier.min > amount);
 
+  /* URL-параметры восстанавливают сохранённый расчёт после первого рендера. */
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const amountParam = Number(params.get("amount"));
@@ -326,6 +333,7 @@ export default function Home() {
     const clinicScenarioParam = params.get("scenario") as ClinicScenarioId | null;
     const equityInvestmentParam = Number(params.get("stock"));
     const equityScenarioParam = params.get("equityScenario") as EquityScenarioId | null;
+    const dividendGrowthParam = Number(params.get("dividendGrowth"));
     const goalParam = params.get("goal") as GoalId | null;
     const targetParam = Number(params.get("target"));
     const nameParam = params.get("name");
@@ -333,7 +341,9 @@ export default function Home() {
     if (Number.isFinite(amountParam) && amountParam > 0) {
       setAmount(clamp(amountParam, MIN_AMOUNT, MAX_AMOUNT));
     }
-    if (TERMS.includes(termParam as (typeof TERMS)[number])) {
+    if (productParam === "equity") {
+      setMonths(36);
+    } else if (TERMS.includes(termParam as (typeof TERMS)[number])) {
       setMonths(termParam);
     }
     if (MODES.some((item) => item.id === modeParam)) {
@@ -349,10 +359,17 @@ export default function Home() {
       setClinicScenarioId(clinicScenarioParam as ClinicScenarioId);
     }
     if (Number.isFinite(equityInvestmentParam) && equityInvestmentParam > 0) {
-      setEquityInvestmentUsd(Math.max(1_000, Math.round(equityInvestmentParam)));
+      setEquityInvestmentUsd(clamp(
+        Math.round(equityInvestmentParam / CURRENT_SHARE_PRICE_USD) * CURRENT_SHARE_PRICE_USD,
+        CURRENT_SHARE_PRICE_USD,
+        PREFERRED_SHARES_FOR_SALE * CURRENT_SHARE_PRICE_USD,
+      ));
     }
     if (EQUITY_SCENARIOS.some((item) => item.id === equityScenarioParam)) {
       setEquityScenarioId(equityScenarioParam as EquityScenarioId);
+    }
+    if (Number.isFinite(dividendGrowthParam) && dividendGrowthParam >= 0) {
+      setEquityDividendGrowth(clamp(dividendGrowthParam, 0, 50));
     }
     if (GOALS.some((item) => item.id === goalParam)) {
       setGoalId(goalParam as GoalId);
@@ -364,6 +381,7 @@ export default function Home() {
       setClientName(nameParam.slice(0, 80));
     }
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const result = useMemo(
     () => calculate(amount, annualRate, months, mode),
@@ -395,25 +413,42 @@ export default function Home() {
     : 0;
 
   const equityScenario = EQUITY_SCENARIOS.find((item) => item.id === equityScenarioId)!;
-  const equityYears = Math.max(1, Math.round(months / 12));
-  const holdingClinicCount = HOLDING_CLINICS_BY_YEAR[equityYears] ?? HOLDING_CLINICS_BY_YEAR[3];
+  const equityYears = 3;
+  const equityShareCount = clamp(
+    Math.floor(equityInvestmentUsd / CURRENT_SHARE_PRICE_USD),
+    1,
+    PREFERRED_SHARES_FOR_SALE,
+  );
+  const equityExactInvestmentUsd = equityShareCount * CURRENT_SHARE_PRICE_USD;
+  const equityDividendGrowthRate = equityDividendGrowth / 100;
+  const equityDividendYear1Usd = equityExactInvestmentUsd * (EQUITY_MIN_RETURN / 100);
+  const equityDividendYear2Usd = equityDividendYear1Usd * (1 + equityDividendGrowthRate);
+  const equityDividendYear3Usd = equityDividendYear2Usd * (1 + equityDividendGrowthRate);
+  const equityTotalDividendsUsd = equityDividendYear1Usd
+    + equityDividendYear2Usd
+    + equityDividendYear3Usd;
+  const equityTargetShareValueUsd = equityShareCount * TARGET_SHARE_PRICE_USD;
+  const equityTotalUsd = equityTargetShareValueUsd + equityTotalDividendsUsd;
+  const equityProfitUsd = equityTotalUsd - equityExactInvestmentUsd;
+  const equityPriceCagr = (Math.pow(TARGET_SHARE_PRICE_USD / CURRENT_SHARE_PRICE_USD, 1 / 3) - 1) * 100;
+  const holdingClinicCount = HOLDING_CLINICS_BY_YEAR[3];
   const holdingEquipmentRevenueUsd = holdingClinicCount * equityScenario.equipmentUsd;
   const holdingEquipmentProfitUsd = holdingEquipmentRevenueUsd * 0.6;
   let holdingRoyaltySom = 0;
-  for (let year = 1; year <= equityYears; year += 1) {
+  for (let year = 1; year <= 3; year += 1) {
     const clinics = HOLDING_CLINICS_BY_YEAR[year] ?? HOLDING_CLINICS_BY_YEAR[3];
     holdingRoyaltySom += clinics * equityScenario.turnoverSomMonth * 12 * 0.15;
   }
   const holdingRoyaltyUsd = holdingRoyaltySom / CLINIC_USD_RATE;
-  const equityGrowthFactor = Math.pow(1 + EQUITY_MIN_RETURN / 100, equityYears);
-  const equityProfitUsd = equityInvestmentUsd * (equityGrowthFactor - 1);
-  const equityTotalUsd = equityInvestmentUsd * equityGrowthFactor;
+  const holdingCurrentValuationUsd = TOTAL_HOLDING_SHARES * CURRENT_SHARE_PRICE_USD;
+  const holdingTargetValuationUsd = TOTAL_HOLDING_SHARES * TARGET_SHARE_PRICE_USD;
+  const preferredOfferVolumeUsd = PREFERRED_SHARES_FOR_SALE * CURRENT_SHARE_PRICE_USD;
 
   const activeAmount = product === "fixed"
-    ? amount
-    : product === "clinic"
-      ? clinicInvestment
-      : equityInvestmentUsd * CLINIC_USD_RATE;
+      ? amount
+      : product === "clinic"
+        ? clinicInvestment
+      : equityExactInvestmentUsd * CLINIC_USD_RATE;
   const activeProfit = product === "fixed"
     ? result.profit
     : product === "clinic"
@@ -472,11 +507,17 @@ export default function Home() {
   const clinicProjectedTotal = clinicTotalValue
     + clinicSuggestedExtraShares * clinicValuePerShare;
   const equityGoalGap = Math.max(0, effectiveGoalAmount - equityTotalUsd * CLINIC_USD_RATE);
-  const equitySuggestedExtraUsd = equityGoalGap > 0
-    ? roundUp(equityGoalGap / CLINIC_USD_RATE / equityGrowthFactor, 100)
-    : Math.max(1_000, roundUp(equityInvestmentUsd * 0.1, 100));
+  const equityDividendPerShareUsd = equityTotalDividendsUsd / equityShareCount;
+  const equityFutureValuePerShareUsd = TARGET_SHARE_PRICE_USD + equityDividendPerShareUsd;
+  const equityAvailableShares = PREFERRED_SHARES_FOR_SALE - equityShareCount;
+  const equityRequiredExtraShares = equityGoalGap > 0
+    ? Math.ceil(equityGoalGap / CLINIC_USD_RATE / equityFutureValuePerShareUsd)
+    : Math.max(1, Math.ceil(equityShareCount * 0.1));
+  const equitySuggestedExtraShares = Math.min(equityRequiredExtraShares, equityAvailableShares);
+  const equitySuggestedExtraUsd = equitySuggestedExtraShares * CURRENT_SHARE_PRICE_USD;
   const equityProjectedTotalUsd = equityTotalUsd
-    + equitySuggestedExtraUsd * equityGrowthFactor;
+    + equitySuggestedExtraShares * equityFutureValuePerShareUsd;
+  const equityPlanReachesGoal = equityProjectedTotalUsd * CLINIC_USD_RATE >= effectiveGoalAmount;
 
   const goalOffer = useMemo(() => {
     const inflationFactor = Math.pow(1 + INFLATION_RATE / 100, months / 12);
@@ -582,6 +623,7 @@ export default function Home() {
       scenario: clinicScenarioId,
       stock: String(Math.round(equityInvestmentUsd)),
       equityScenario: equityScenarioId,
+      dividendGrowth: String(equityDividendGrowth),
       goal: goalId,
       target: String(Math.round(goalAmount)),
       ...(clientName.trim() ? { name: clientName.trim() } : {}),
@@ -606,7 +648,9 @@ export default function Home() {
 
   function selectProduct(id: ProductId) {
     setProduct(id);
-    if (id !== "fixed" && months === 6) {
+    if (id === "equity") {
+      setMonths(36);
+    } else if (id === "clinic" && months === 6) {
       setMonths(12);
     }
   }
@@ -626,6 +670,7 @@ export default function Home() {
       scenario: clinicScenarioId,
       stock: String(Math.round(equityInvestmentUsd)),
       equityScenario: equityScenarioId,
+      dividendGrowth: String(equityDividendGrowth),
       goal: goalId,
       target: String(Math.round(goalAmount)),
       ...(clientName.trim() ? { name: clientName.trim() } : {}),
@@ -675,7 +720,6 @@ export default function Home() {
             type="button"
             className={product === "fixed" ? "product-card active" : "product-card"}
             onClick={() => selectProduct("fixed")}
-            aria-pressed={product === "fixed"}
             role="tab"
             aria-selected={product === "fixed"}
           >
@@ -691,7 +735,6 @@ export default function Home() {
             type="button"
             className={product === "clinic" ? "product-card clinic active" : "product-card clinic"}
             onClick={() => selectProduct("clinic")}
-            aria-pressed={product === "clinic"}
             role="tab"
             aria-selected={product === "clinic"}
           >
@@ -707,7 +750,6 @@ export default function Home() {
             type="button"
             className={product === "equity" ? "product-card equity active" : "product-card equity"}
             onClick={() => selectProduct("equity")}
-            aria-pressed={product === "equity"}
             role="tab"
             aria-selected={product === "equity"}
           >
@@ -715,7 +757,7 @@ export default function Home() {
             <span>
               <small>Рост вместе с медицинским холдингом</small>
               <strong>Акции R.I.C.H.</strong>
-              <span>Целевой минимум 14% годовых в USD плюс потенциал роста стоимости акций.</span>
+              <span>14% дивидендов в USD ежегодно и плановый рост акции с $25 до $150 за 3 года.</span>
             </span>
             <span className="product-select">Выбрать</span>
           </button>
@@ -1182,30 +1224,34 @@ export default function Home() {
           </div>
 
           <div className="field-block equity-investment-field">
-            <label htmlFor="equity-investment">Сумма покупки акций</label>
+            <label htmlFor="equity-investment">Сколько привилегированных акций купить?</label>
             <div className="input-with-unit equity-usd-input">
               <input
                 id="equity-investment"
                 type="number"
-                min={1_000}
-                step={1_000}
-                value={equityInvestmentUsd}
-                onChange={(event) => setEquityInvestmentUsd(Math.max(1_000, Number(event.target.value)))}
+                min={1}
+                max={PREFERRED_SHARES_FOR_SALE}
+                step={1}
+                value={equityShareCount}
+                onChange={(event) => {
+                  const shares = clamp(Math.round(Number(event.target.value)), 1, PREFERRED_SHARES_FOR_SALE);
+                  setEquityInvestmentUsd(shares * CURRENT_SHARE_PRICE_USD);
+                }}
               />
-              <span>USD</span>
+              <span>акций</span>
             </div>
             <div className="equity-quick-values">
-              {[10_000, 25_000, 50_000, 100_000].map((value) => (
+              {[100, 400, 1_000, 5_000].map((shares) => (
                 <button
-                  key={value}
+                  key={shares}
                   type="button"
-                  className={equityInvestmentUsd === value ? "active" : ""}
-                  onClick={() => setEquityInvestmentUsd(value)}
-                >{formatUsd(value)}</button>
+                  className={equityShareCount === shares ? "active" : ""}
+                  onClick={() => setEquityInvestmentUsd(shares * CURRENT_SHARE_PRICE_USD)}
+                >{moneyFormatter.format(shares)} акций</button>
               ))}
             </div>
             <p className="equity-kgs-equivalent">
-              Эквивалент для целей: {formatMoney(equityInvestmentUsd * CLINIC_USD_RATE)} по курсу модели {CLINIC_USD_RATE} сом/$
+              Стоимость пакета: <strong>{formatUsd(equityExactInvestmentUsd)}</strong> · цена {formatUsd(CURRENT_SHARE_PRICE_USD)} за акцию · доступно 300 000 из 1 000 000 акций
             </p>
           </div>
 
@@ -1228,29 +1274,50 @@ export default function Home() {
             </div>
           </fieldset>
 
-          <fieldset className="field-block">
-            <legend>Горизонт роста холдинга</legend>
-            <div className="term-options clinic-terms">
-              {[12, 24, 36].map((term) => (
+          <fieldset className="field-block dividend-growth-field">
+            <legend>Возможный рост суммы дивидендов в год</legend>
+            <div className="term-options dividend-growth-options">
+              {[0, 5, 10, 20].map((growth) => (
                 <button
-                  key={term}
+                  key={growth}
                   type="button"
-                  className={months === term ? "active" : ""}
-                  onClick={() => setMonths(term)}
-                  aria-pressed={months === term}
+                  className={equityDividendGrowth === growth ? "active" : ""}
+                  onClick={() => setEquityDividendGrowth(growth)}
+                  aria-pressed={equityDividendGrowth === growth}
                 >
-                  {termLabel(term)} · до {moneyFormatter.format(HOLDING_CLINICS_BY_YEAR[term / 12])} клиник
+                  {growth === 0 ? "Без роста" : `+${growth}% в год`}
                 </button>
               ))}
             </div>
+            <small className="dividend-growth-help">
+              База всегда начинается с 14% от цены покупки. Рост дивидендов — дополнительный сценарий, а не гарантия.
+            </small>
           </fieldset>
+
+          <div className="equity-roadmap">
+            {[1, 2, 3].map((year) => {
+              const dividend = year === 1
+                ? equityDividendYear1Usd
+                : year === 2
+                  ? equityDividendYear2Usd
+                  : equityDividendYear3Usd;
+              return (
+                <div key={year}>
+                  <span>{year}-й год</span>
+                  <strong>до {moneyFormatter.format(HOLDING_CLINICS_BY_YEAR[year])} клиник</strong>
+                  <small>Дивиденд: {formatUsd(dividend)}</small>
+                  {year === 3 && <em>Цель акции: {formatUsd(TARGET_SHARE_PRICE_USD)}</em>}
+                </div>
+              );
+            })}
+          </div>
 
           <div className="equity-assumption-note">
             <strong>Как читается этот расчёт</strong>
             <p>
-              14% — целевой минимальный рост капитала в USD. Экономика сети показана
-              отдельно: 60% чистой прибыли с оборудования и роялти 15% от оборота.
-              Оборот 2–12 млн сом принят как месячный ориентир одной клиники.
+              Первые 3 года расчёт показывает базовый дивиденд 14% годовых в USD.
+              Параллельно плановая цена акции растёт с $25 до $150. Экономика сети
+              показана отдельно: 60% чистой прибыли с оборудования и роялти 15% от оборота.
             </p>
           </div>
         </div>
@@ -1262,20 +1329,60 @@ export default function Home() {
           </div>
 
           <div className="primary-result equity-primary-result">
-            <p>Расчётный капитал в USD</p>
+            <p>Потенциальная стоимость пакета через 3 года</p>
             <strong>{formatUsd(equityTotalUsd)}</strong>
-            <span>{formatUsd(equityInvestmentUsd)} + {formatUsd(equityProfitUsd)} роста</span>
+            <span>{formatUsd(equityTargetShareValueUsd)} акции + {formatUsd(equityTotalDividendsUsd)} дивиденды</span>
           </div>
 
           <div className="equity-minimum-card">
-            <span>Целевой минимум</span>
+            <span>Базовый дивиденд первые 3 года</span>
             <strong>{EQUITY_MIN_RETURN}% в год в USD</strong>
-            <small>С ежегодной капитализацией на выбранном горизонте.</small>
+            <small>
+              В 1-й год {formatUsd(equityDividendYear1Usd)}.
+              {equityDividendGrowth > 0
+                ? ` Далее сумма растёт на ${equityDividendGrowth}% в год по выбранному сценарию.`
+                : " Без дополнительного роста дивидендов."}
+            </small>
           </div>
 
           <div className="result-stats equity-result-stats">
             <div>
-              <span>Клиник к концу периода</span>
+              <span>Ваш пакет</span>
+              <strong>{moneyFormatter.format(equityShareCount)} акций</strong>
+            </div>
+            <div>
+              <span>Дивиденды за 3 года</span>
+              <strong>{formatUsd(equityTotalDividendsUsd)}</strong>
+            </div>
+            <div>
+              <span>Рост цены акции</span>
+              <strong>{formatUsd(CURRENT_SHARE_PRICE_USD)} → {formatUsd(TARGET_SHARE_PRICE_USD)}</strong>
+            </div>
+          </div>
+
+          <div className="equity-growth-engine">
+            <p>Оценка холдинга и пакет акций</p>
+            <div>
+              <span>Текущая оценка: 1 млн × $25</span>
+              <strong>{formatUsd(holdingCurrentValuationUsd)}</strong>
+            </div>
+            <div>
+              <span>Плановая оценка: 1 млн × $150</span>
+              <strong>{formatUsd(holdingTargetValuationUsd)}</strong>
+            </div>
+            <div>
+              <span>300 000 привилегированных акций</span>
+              <strong>{formatUsd(preferredOfferVolumeUsd)} объём предложения</strong>
+            </div>
+            <div>
+              <span>Плановый среднегодовой рост цены</span>
+              <strong>{percentFormatter.format(equityPriceCagr)}%</strong>
+            </div>
+          </div>
+
+          <div className="equity-network-summary">
+            <div>
+              <span>Клиник через 3 года</span>
               <strong>{moneyFormatter.format(holdingClinicCount)}</strong>
             </div>
             <div>
@@ -1283,32 +1390,16 @@ export default function Home() {
               <strong>{formatUsd(holdingEquipmentProfitUsd)}</strong>
             </div>
             <div>
-              <span>Роялти за период</span>
+              <span>Роялти за 3 года</span>
               <strong>{formatUsd(holdingRoyaltyUsd)}</strong>
-            </div>
-          </div>
-
-          <div className="equity-growth-engine">
-            <p>Двигатель стоимости холдинга</p>
-            <div>
-              <span>Аппараты на клинику</span>
-              <strong>{formatUsd(equityScenario.equipmentUsd)}</strong>
-            </div>
-            <div>
-              <span>Роялти от оборота</span>
-              <strong>15%</strong>
-            </div>
-            <div>
-              <span>Целевые клиники</span>
-              <strong>{moneyFormatter.format(holdingClinicCount)}</strong>
             </div>
           </div>
 
           <div className="clinic-risk-note equity-risk-note">
             <span aria-hidden="true">i</span>
             <p>
-              Рост сети не равен автоматически росту цены акций. Фактическая доходность
-              зависит от оценки холдинга, расходов, налогов и условий выпуска акций.
+              $150 за акцию и рост дивидендов — плановые ориентиры, а не гарантия.
+              Фактическая стоимость зависит от результатов холдинга и условий выпуска акций.
             </p>
           </div>
 
@@ -1388,32 +1479,44 @@ export default function Home() {
           <div className="proposal-title">
             <p>{clientName.trim() ? `Для ${clientName.trim()}` : "Для будущего инвестора"}</p>
             <h2>
-              {product === "equity" ? formatUsd(equityInvestmentUsd) : formatMoney(activeAmount)} начинают работать на цель «{selectedGoal.title}»
+              {product === "equity" ? formatUsd(equityExactInvestmentUsd) : formatMoney(activeAmount)} начинают работать на цель «{selectedGoal.title}»
             </h2>
             <span>
               {product === "fixed"
                 ? `Срок ${termLabel(months)}, фиксированная ставка ${annualRate}% годовых, выбранный способ — ${selectedMode.short.toLowerCase()}.`
                 : product === "clinic"
                   ? `${clinicShare}% доли клиники, сценарий «${clinicScenario.title}», горизонт расчёта — ${termLabel(months)}.`
-                  : `Акции холдинга, целевой минимум ${EQUITY_MIN_RETURN}% годовых в USD, горизонт — ${termLabel(months)}.`}
+                  : `Пакет из ${moneyFormatter.format(equityShareCount)} привилегированных акций по $25, базовый дивиденд ${EQUITY_MIN_RETURN}% годовых в USD, плановая цена через 3 года — $150.`}
             </span>
           </div>
 
           <div className="proposal-metrics">
             <div>
               <span>Вложение</span>
-              <strong>{product === "equity" ? formatUsd(equityInvestmentUsd) : formatMoney(activeAmount)}</strong>
+              <strong>{product === "equity" ? formatUsd(equityExactInvestmentUsd) : formatMoney(activeAmount)}</strong>
             </div>
             <div>
-              <span>Расчётный доход</span>
+              <span>{product === "equity" ? "Рост цены + дивиденды" : "Расчётный доход"}</span>
               <strong>+{product === "equity" ? formatUsd(equityProfitUsd) : formatMoney(activeProfit)}</strong>
             </div>
             <div>
-              <span>{product === "fixed" ? "Итоговый капитал" : "Доля + расчётный доход"}</span>
+              <span>
+                {product === "fixed"
+                  ? "Итоговый капитал"
+                  : product === "clinic"
+                    ? "Доля + расчётный доход"
+                    : "Плановая стоимость пакета"}
+              </span>
               <strong>{product === "equity" ? formatUsd(equityTotalUsd) : formatMoney(activeTotal)}</strong>
             </div>
             <div className="proposal-profit-metric">
-              <span>{product === "fixed" ? "Рост капитала" : "Доходность в год"}</span>
+              <span>
+                {product === "fixed"
+                  ? "Рост капитала"
+                  : product === "clinic"
+                    ? "Доходность в год"
+                    : "Базовый дивиденд в год"}
+              </span>
               <strong>+{percentFormatter.format(activeAnnualRate)}%</strong>
             </div>
           </div>
@@ -1486,7 +1589,9 @@ export default function Home() {
                 </h3>
               )}
               <p>
-                {goalId === "preserve"
+                {product === "equity"
+                  ? `За 3 года пакет приносит ${formatUsd(equityTotalDividendsUsd)} дивидендов, а плановая стоимость самих акций составляет ${formatUsd(equityTargetShareValueUsd)}.`
+                  : goalId === "preserve"
                   ? `Расчётный доход составляет ${formatMoney(activeProfit)} и работает вместе с основной суммой.`
                   : `Один только доход создаёт ${percentFormatter.format(profitGoalShare)}% стоимости выбранной цели.`}
               </p>
@@ -1508,10 +1613,10 @@ export default function Home() {
                 </>
               ) : (
                 <>
-                  <li><span>Акции</span><strong>{formatUsd(equityInvestmentUsd)}</strong></li>
-                  <li><span>Целевой минимум</span><strong>{EQUITY_MIN_RETURN}% в USD</strong></li>
-                  <li><span>Горизонт</span><strong>{termLabel(months)}</strong></li>
-                  <li><span>Расчётный итог</span><strong>{formatUsd(equityTotalUsd)}</strong></li>
+                  <li><span>Количество</span><strong>{moneyFormatter.format(equityShareCount)} акций</strong></li>
+                  <li><span>Цена покупки</span><strong>$25 за акцию</strong></li>
+                  <li><span>Дивиденды за 3 года</span><strong>{formatUsd(equityTotalDividendsUsd)}</strong></li>
+                  <li><span>Плановый итог</span><strong>{formatUsd(equityTotalUsd)}</strong></li>
                 </>
               )}
             </ul>
@@ -1545,23 +1650,39 @@ export default function Home() {
                     не гарантирована и может быть выше или ниже. Права на долю и дивиденды фиксируются договором.
                   </small>
                 </>
-              ) : product === "equity" ? (
+              ) : product === "equity" && equitySuggestedExtraShares > 0 ? (
                 <>
                   <strong className="topup-headline">
                     {equityGoalGap > 0
-                      ? `Увеличьте пакет акций ещё на ${formatUsd(equitySuggestedExtraUsd)}.`
-                      : `Добавьте к пакету ещё ${formatUsd(equitySuggestedExtraUsd)}.`}
+                      ? `Добавьте ещё ${moneyFormatter.format(equitySuggestedExtraShares)} привилегированных акций за ${formatUsd(equitySuggestedExtraUsd)}.`
+                      : `Увеличьте пакет ещё на ${moneyFormatter.format(equitySuggestedExtraShares)} акций за ${formatUsd(equitySuggestedExtraUsd)}.`}
                   </strong>
                   <p>
-                    При целевом минимуме {EQUITY_MIN_RETURN}% в USD расчётный капитал через {termLabel(months)} составит
+                    С базовыми дивидендами {EQUITY_MIN_RETURN}% в год и плановой ценой $150 за акцию стоимость пакета через 3 года составит
                     <strong> {formatUsd(equityProjectedTotalUsd)}</strong>.
                     {equityGoalGap > 0
-                      ? ` Это соответствует цели «${selectedGoal.title}» по курсу модели.`
-                      : " Рост сети из клиник, оборудования и роялти создаёт дополнительный потенциал переоценки."}
+                      ? equityPlanReachesGoal
+                        ? ` Этого достаточно для цели «${selectedGoal.title}» по курсу модели.`
+                        : " Доступного остатка выпуска недостаточно, чтобы полностью закрыть выбранную цель."
+                      : " Чем больше пакет, тем больше сумма дивидендов и потенциальный результат от роста цены."}
                   </p>
                   <small>
-                    14% — целевой ориентир, а не гарантия. Фактическая цена акций и выплаты
-                    определяются оценкой холдинга и условиями выпуска ценных бумаг.
+                    Цена $150 и выбранный рост суммы дивидендов — плановые сценарии, а не гарантия.
+                    Фактическая цена и выплаты определяются результатами холдинга и условиями выпуска ценных бумаг.
+                  </small>
+                </>
+              ) : product === "equity" ? (
+                <>
+                  <strong className="topup-headline">
+                    Вы выбрали весь доступный выпуск — {moneyFormatter.format(PREFERRED_SHARES_FOR_SALE)} привилегированных акций.
+                  </strong>
+                  <p>
+                    Стоимость покупки составляет <strong>{formatUsd(equityExactInvestmentUsd)}</strong>,
+                    а плановый итог пакета через 3 года — <strong>{formatUsd(equityTotalUsd)}</strong>.
+                  </p>
+                  <small>
+                    Цена $150 и рост суммы дивидендов — плановые сценарии, а не гарантия.
+                    Фактическая цена и выплаты определяются результатами холдинга и условиями выпуска ценных бумаг.
                   </small>
                 </>
               ) : bestScenarioGap > 0 ? (
