@@ -569,6 +569,37 @@ footer {
   color: var(--ink);
 }
 
+.growth-order {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.growth-order strong {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--green);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.growth-order strong::before,
+.growth-order strong::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--line);
+}
+
 .mode-options {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -577,7 +608,7 @@ footer {
 
 .mode-card {
   position: relative;
-  min-height: 126px;
+  min-height: 166px;
   display: grid;
   grid-template-columns: 18px 1fr;
   align-items: start;
@@ -633,6 +664,16 @@ footer {
   display: block;
 }
 
+.mode-order {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--green-light);
+  font-size: 7.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .mode-copy strong {
   font-size: 13px;
 }
@@ -644,17 +685,34 @@ footer {
   line-height: 1.4;
 }
 
+.mode-result-label,
 .mode-result,
+.mode-profit,
 .mode-extra {
   display: block;
 }
 
+.mode-result-label {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 7.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
 .mode-result {
-  margin-top: 9px;
+  margin-top: 2px;
   color: var(--ink);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 600;
+}
+
+.mode-profit {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 8px;
 }
 
 .mode-extra {
@@ -677,6 +735,21 @@ footer {
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.frequency-explanation {
+  margin: 9px 0 0;
+  padding: 10px 12px;
+  border: 1px dashed rgba(20, 62, 50, 0.22);
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.frequency-explanation::first-line {
+  color: var(--ink);
+  font-weight: 800;
 }
 
 .result-panel {
@@ -2287,7 +2360,7 @@ footer p {
   }
 
   .mode-card {
-    min-height: 96px;
+    min-height: 0;
   }
 
   .primary-result strong {

@@ -95,30 +95,29 @@ const MODES: Array<{
 }> = [
   {
     id: "monthly",
-    short: "Забирать ежемесячно",
+    short: "Получать каждый месяц",
     title: "Проценты каждый месяц",
-    description: "Деньги приходят сразу, но больше не создают новый доход.",
-    badge: "Доход сейчас",
-  },
-  {
-    id: "quarterly",
-    short: "Оставлять на квартал",
-    title: "Рост каждые 3 месяца",
-    description: "Проценты присоединяются к телу четыре раза в год.",
+    description: "Получили проценты — они больше не растут.",
+    badge: "Деньги сейчас",
   },
   {
     id: "yearly",
-    short: "Получить в конце года",
-    title: "Доход работает весь год",
-    description: "В течение года проценты остаются в теле и увеличивают базу.",
-    badge: "Стратегия роста",
+    short: "Добавлять раз в год",
+    title: "Проценты прибавляются раз в год",
+    description: "Раз в год доход прибавляется к вашим деньгам.",
+  },
+  {
+    id: "quarterly",
+    short: "Добавлять раз в квартал",
+    title: "Рост каждые 3 месяца",
+    description: "Доход прибавляется 4 раза в год и растёт быстрее.",
   },
   {
     id: "maturity",
-    short: "Получить в конце срока",
+    short: "Оставить до конца",
     title: "Максимум сложного процента",
-    description: "Каждый месяц проценты увеличивают тело до полного погашения.",
-    badge: "Рекомендуем",
+    description: "Проценты прибавляются каждый месяц. Самый большой итог.",
+    badge: "Самый большой итог",
   },
 ];
 
@@ -479,36 +478,46 @@ export default function Home() {
           </fieldset>
 
           <fieldset className="field-block mode-field">
-            <legend>Как получать доход</legend>
+            <legend>Когда вы хотите получить проценты?</legend>
             <p className="mode-lead">
-              Сравните итог: ранняя выплата даёт деньги сегодня, капитализация —
-              больше денег для вашей цели завтра.
+              Начальная сумма везде одинаковая. Чем чаще проценты прибавляются
+              к ней, тем больше денег получается в конце.
             </p>
 
             <div className="retention-comparison">
               <div className="withdraw-now-card">
-                <span>Забирать каждый месяц</span>
+                <span>Получать проценты сейчас</span>
                 <strong>{formatMoney(standard.total)}</strong>
-                <small>Проценты перестают работать после выплаты</small>
+                <small>
+                  {formatMoney(amount)} ваших денег + {formatMoney(standard.profit)} дохода
+                </small>
               </div>
               <div className="retain-income-card">
-                <span>Оставить до конца срока</span>
+                <span>Оставить проценты работать</span>
                 <strong>{formatMoney(maxGrowth.total)}</strong>
-                <small>+{formatMoney(retentionGain)} создаёт сложный процент</small>
+                <small>
+                  {formatMoney(amount)} ваших денег + {formatMoney(maxGrowth.profit)} дохода
+                </small>
               </div>
             </div>
 
             <div className="retention-message">
-              <span aria-hidden="true">↗</span>
+              <span aria-hidden="true">+</span>
               <p>
-                Не забирая проценты, вы увеличиваете тело без новых взносов.
-                В этом расчёте решение подождать создаёт ещё
-                <strong> {formatMoney(retentionGain)}</strong>.
+                Простая разница: если подождать, вы получите ещё
+                <strong> {formatMoney(retentionGain)}</strong>. Эти деньги появляются,
+                потому что проценты сами приносят новые проценты.
               </p>
             </div>
 
+            <div className="growth-order">
+              <span>Меньше</span>
+              <strong>Варианты от меньшего итога к большему</strong>
+              <span>Больше</span>
+            </div>
+
             <div className="mode-options">
-              {MODES.map((item) => {
+              {MODES.map((item, index) => {
                 const itemResult = comparisons.find((entry) => entry.id === item.id)!.result;
                 const extraIncome = itemResult.profit - standard.profit;
 
@@ -522,11 +531,14 @@ export default function Home() {
                   >
                     <span className="radio-dot" aria-hidden="true" />
                     <span className="mode-copy">
+                      <span className="mode-order">Вариант {index + 1}</span>
                       <strong>{item.short}</strong>
                       <small>{item.description}</small>
-                      <span className="mode-result">Итог {formatMoney(itemResult.total)}</span>
+                      <span className="mode-result-label">Вы получите всего</span>
+                      <span className="mode-result">{formatMoney(itemResult.total)}</span>
+                      <span className="mode-profit">Ваш доход: +{formatMoney(itemResult.profit)}</span>
                       {extraIncome > 1 && (
-                        <span className="mode-extra">+{formatMoney(extraIncome)} к ежемесячным выплатам</span>
+                        <span className="mode-extra">На {formatMoney(extraIncome)} больше варианта 1</span>
                       )}
                     </span>
                     {item.badge && <span className="mode-badge">{item.badge}</span>}
@@ -534,6 +546,11 @@ export default function Home() {
                 );
               })}
             </div>
+
+            <p className="frequency-explanation">
+              Почему квартал даёт больше, чем год? Потому что проценты
+              прибавляются к вашим деньгам чаще: 4 раза в год вместо 1 раза.
+            </p>
           </fieldset>
         </div>
 
