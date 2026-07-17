@@ -45,6 +45,7 @@ button {
 
 .topbar,
 .hero,
+.currency-section,
 .product-section,
 .purpose-section,
 .calculator-grid,
@@ -115,6 +116,92 @@ footer {
   border-radius: 50%;
   background: #72a833;
   box-shadow: 0 0 0 5px rgba(114, 168, 51, 0.12);
+}
+
+.currency-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 24px;
+  margin-top: 18px;
+  padding: 18px 22px;
+  border: 1px solid rgba(20, 62, 50, 0.16);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f2f5ec, #fbfaf5);
+}
+
+.currency-section .section-kicker {
+  margin-bottom: 5px;
+  font-size: 8px;
+}
+
+.currency-section > div:first-child > strong,
+.currency-section > div:first-child > small {
+  display: block;
+}
+
+.currency-section > div:first-child > strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.currency-section > div:first-child > small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 8.5px;
+}
+
+.currency-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(118px, 1fr));
+  gap: 7px;
+}
+
+.currency-options button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fffef9;
+  cursor: pointer;
+}
+
+.currency-options button span {
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.currency-options button small {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.currency-options button.active {
+  border-color: var(--green);
+  background: var(--green);
+  color: var(--white);
+}
+
+.currency-options button.active small {
+  color: var(--lime);
+}
+
+.currency-rate-note {
+  grid-column: 1 / -1;
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.currency-rate-note a {
+  color: var(--green);
+  font-weight: 800;
 }
 
 .hero {
@@ -2794,6 +2881,14 @@ button.horizon-row:focus-visible,
   line-height: 1.4;
 }
 
+.currency-model-note {
+  display: block;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 7.5px;
+  line-height: 1.4;
+}
+
 .goal-offer-metrics {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -3132,6 +3227,7 @@ footer p {
 @media (max-width: 720px) {
   .topbar,
   .hero,
+  .currency-section,
   .product-section,
   .purpose-section,
   .calculator-grid,
@@ -3149,6 +3245,16 @@ footer p {
   .brand small,
   .topbar-note {
     display: none;
+  }
+
+  .currency-section {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .currency-options {
+    width: 100%;
+    grid-template-columns: 1fr 1fr;
   }
 
   .hero {
