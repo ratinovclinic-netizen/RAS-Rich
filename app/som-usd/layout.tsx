@@ -6,6 +6,6 @@ export const metadata: Metadata = {
   description: "Инвестиционный калькулятор R.I.C.H. для расчётов в кыргызских сомах и долларах США.",
 };
 
-export default function SomDollarAliasLayout({ children }: { children: ReactNode }) {
+export default function SomDollarLayout({ children }: { children: ReactNode }) {
   return children;
 }

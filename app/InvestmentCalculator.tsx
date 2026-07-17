@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 type ModeId = "monthly" | "quarterly" | "yearly" | "maturity";
 type ProductId = "fixed" | "clinic" | "equity";
 type ClinicScenarioId = "minimum" | "base" | "achievable";
-export type CurrencyId = "KGS" | "UZS" | "RUB";
+export type CurrencyId = "KGS" | "USD";
 type GoalId =
   | "preserve"
   | "car"
@@ -50,35 +50,23 @@ const CURRENCY_CONFIG: Record<CurrencyId, {
   label: string;
   shortLabel: string;
   unit: string;
-  usdRate: number;
-  rateDate: string;
-  sourceUrl?: string;
+  displayScale: number;
+  prefix?: string;
 }> = {
   KGS: {
     code: "KGS",
     label: "Кыргызский сом",
     shortLabel: "Сом",
     unit: "сом",
-    usdRate: 87.5,
-    rateDate: "курс модели",
+    displayScale: 1,
   },
-  UZS: {
-    code: "UZS",
-    label: "Узбекский сум",
-    shortLabel: "Сум UZS",
-    unit: "сум",
-    usdRate: 12_093.35,
-    rateDate: "16.07.2026",
-    sourceUrl: "https://www.cbu.uz/uz/arkhiv-kursov-valyut/",
-  },
-  RUB: {
-    code: "RUB",
-    label: "Российский рубль",
-    shortLabel: "Рубль ₽",
-    unit: "₽",
-    usdRate: 78.3181,
-    rateDate: "17.07.2026",
-    sourceUrl: "https://www.cbr.ru/eng/",
+  USD: {
+    code: "USD",
+    label: "Доллар США",
+    shortLabel: "Доллар $",
+    unit: "USD",
+    displayScale: 0.01,
+    prefix: "$",
   },
 };
 
@@ -306,7 +294,10 @@ function calculate(
 }
 
 function formatMoney(value: number, currency: CurrencyId) {
-  return `${moneyFormatter.format(Math.round(value))} ${CURRENCY_CONFIG[currency].unit}`;
+  const config = CURRENCY_CONFIG[currency];
+  const displayedValue = value * config.displayScale;
+  const formatted = moneyFormatter.format(Math.round(displayedValue));
+  return config.prefix ? `${config.prefix}${formatted}` : `${formatted} ${config.unit}`;
 }
 
 function formatUsd(value: number) {
@@ -331,11 +322,13 @@ function termLabel(months: number) {
 type InvestmentCalculatorProps = {
   initialCurrency: CurrencyId;
   currencyOptions: CurrencyId[];
+  usdModelRate: number;
 };
 
 export function InvestmentCalculator({
   initialCurrency,
   currencyOptions,
+  usdModelRate,
 }: InvestmentCalculatorProps) {
   const [currency, setCurrency] = useState<CurrencyId>(initialCurrency);
   const [product, setProduct] = useState<ProductId>("fixed");
@@ -351,10 +344,18 @@ export function InvestmentCalculator({
   const [goalAmount, setGoalAmount] = useState(2_000_000);
 
   const currencyConfig = CURRENCY_CONFIG[currency];
-  const usdToLocalRate = currencyConfig.usdRate;
+  const usdToLocalRate = usdModelRate;
   const formatLocalMoney = useCallback(
     (value: number) => formatMoney(value, currency),
     [currency],
+  );
+  const toDisplayedAmount = useCallback(
+    (value: number) => value * currencyConfig.displayScale,
+    [currencyConfig.displayScale],
+  );
+  const toBaseAmount = useCallback(
+    (value: number) => value / currencyConfig.displayScale,
+    [currencyConfig.displayScale],
   );
 
   const rateDetails = getAutomaticRate(amount, months);
@@ -750,8 +751,8 @@ export function InvestmentCalculator({
         <section className="currency-section" aria-label="Выбор валюты расчёта">
           <div>
             <p className="section-kicker">Валюта расчёта</p>
-            <strong>Одинаковая логика — узбекский сум или российский рубль</strong>
-            <small>Суммы не конвертируются при переключении: меняется валюта самого предложения.</small>
+            <strong>Одинаковая логика — кыргызский сом или доллар США</strong>
+            <small>При переключении сумма автоматически пересчитывается, а ставка и срок не меняются.</small>
           </div>
           <div className="currency-options" role="group" aria-label="Валюта">
             {currencyOptions.map((option) => {
@@ -771,10 +772,7 @@ export function InvestmentCalculator({
             })}
           </div>
           <p className="currency-rate-note">
-            Для пересчёта долларового продукта: $1 = {moneyFormatter.format(currencyConfig.usdRate)} {currencyConfig.unit}
-            {currencyConfig.sourceUrl ? (
-              <> · <a href={currencyConfig.sourceUrl} target="_blank" rel="noreferrer">официальный курс на {currencyConfig.rateDate}</a></>
-            ) : ` · ${currencyConfig.rateDate}`}
+            Курс модели: $1 = {moneyFormatter.format(usdModelRate)} сом · {formatMoney(MIN_AMOUNT, "KGS")} = {formatMoney(MIN_AMOUNT, "USD")}
           </p>
         </section>
       )}
@@ -907,29 +905,29 @@ export function InvestmentCalculator({
               <input
                 id="amount"
                 type="number"
-                min={MIN_AMOUNT}
-                max={MAX_AMOUNT}
-                step={100_000}
-                value={amount}
+                min={toDisplayedAmount(MIN_AMOUNT)}
+                max={toDisplayedAmount(MAX_AMOUNT)}
+                step={toDisplayedAmount(100_000)}
+                value={toDisplayedAmount(amount)}
                 onChange={(event) =>
-                  setAmount(clamp(Number(event.target.value), MIN_AMOUNT, MAX_AMOUNT))
+                  setAmount(clamp(toBaseAmount(Number(event.target.value)), MIN_AMOUNT, MAX_AMOUNT))
                 }
               />
-              <span>{currencyConfig.unit}</span>
+              <span>{currencyConfig.code}</span>
             </div>
             <input
               className="range-input"
-              aria-label={`Сумма инвестиций от 500 тысяч до 10 миллионов ${currencyConfig.unit}`}
+              aria-label={`Сумма инвестиций от ${formatLocalMoney(MIN_AMOUNT)} до ${formatLocalMoney(MAX_AMOUNT)}`}
               type="range"
-              min={MIN_AMOUNT}
-              max={MAX_AMOUNT}
-              step={100_000}
-              value={amount}
-              onChange={(event) => setAmount(Number(event.target.value))}
+              min={toDisplayedAmount(MIN_AMOUNT)}
+              max={toDisplayedAmount(MAX_AMOUNT)}
+              step={toDisplayedAmount(100_000)}
+              value={toDisplayedAmount(amount)}
+              onChange={(event) => setAmount(toBaseAmount(Number(event.target.value)))}
             />
             <div className="range-labels">
-              <span>500 000</span>
-              <span>10 000 000 {currencyConfig.unit}</span>
+              <span>{formatLocalMoney(MIN_AMOUNT)}</span>
+              <span>{formatLocalMoney(MAX_AMOUNT)}</span>
             </div>
           </div>
 
@@ -1498,14 +1496,14 @@ export function InvestmentCalculator({
                 <div className="input-with-unit">
                   <input
                     type="number"
-                    min={100_000}
-                    step={100_000}
-                    value={goalAmount}
+                    min={toDisplayedAmount(100_000)}
+                    step={toDisplayedAmount(100_000)}
+                    value={toDisplayedAmount(goalAmount)}
                     onChange={(event) =>
-                      setGoalAmount(Math.max(100_000, Number(event.target.value)))
+                      setGoalAmount(Math.max(100_000, toBaseAmount(Number(event.target.value))))
                     }
                   />
-                  <span>{currencyConfig.unit}</span>
+                  <span>{currencyConfig.code}</span>
                 </div>
               </label>
             )}

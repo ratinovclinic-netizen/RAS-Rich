@@ -1,6 +1,6 @@
 import { InvestmentCalculator } from "../InvestmentCalculator";
 
-export default function SomDollarCalculatorAlias() {
+export default function SomDollarCalculator() {
   return (
     <InvestmentCalculator
       initialCurrency="KGS"
