@@ -33,7 +33,13 @@ test("server-renders the complete R.I.C.H. investor flow", async () => {
   assert.match(html, /rich-logo-gold\.png/i);
   assert.doesNotMatch(html, /class="currency-section"/i);
   assert.match(html, /Выберите инвестиционный продукт/i);
+  assert.match(html, /Инвестируй в медицину будущего\./i);
+  assert.doesNotMatch(html, /Капитал для здоровья, свободы и будущего/i);
+  assert.doesNotMatch(html, /Experience of R\.I\.C\.H\./i);
   assert.match(html, /Зачем вам увеличивать капитал\?/i);
+  assert.match(html, /Здоровье семьи/i);
+  assert.match(html, /Путь инвестора к цели/i);
+  assert.match(html, /Четыре коротких шага/i);
   assert.match(html, /Доходный капитал/i);
   assert.match(html, /Как часто получать доход\?/i);
   assert.match(html, /Ваша конечная ставка/i);
@@ -57,6 +63,14 @@ test("keeps branded assets and fixed-income rules in source", async () => {
     readFile(cssUrl, "utf8"),
     access(new URL("../public/brand/rich-logo-gold.png", import.meta.url)),
     access(new URL("../public/brand/rich-pattern.jpg", import.meta.url)),
+    access(new URL("../public/brand/goal-preserve-v2.jpg", import.meta.url)),
+    access(new URL("../public/brand/goal-car-v2.jpg", import.meta.url)),
+    access(new URL("../public/brand/goal-home-v2.jpg", import.meta.url)),
+    access(new URL("../public/brand/goal-education-v2.jpg", import.meta.url)),
+    access(new URL("../public/brand/goal-security-v2.jpg", import.meta.url)),
+    access(new URL("../public/brand/goal-business-v2.jpg", import.meta.url)),
+    access(new URL("../public/brand/goal-health-v2.jpg", import.meta.url)),
+    access(new URL("../public/brand/goal-freedom-v3.jpg", import.meta.url)),
   ]);
 
   assert.match(component, /6:\s*24/);
@@ -72,5 +86,8 @@ test("keeps branded assets and fixed-income rules in source", async () => {
   assert.match(component, /const BANK_RATE_BENCHMARK = 14/);
   assert.match(css, /--green:\s*#0f3526/i);
   assert.match(css, /--gold:\s*#d6a266/i);
+  assert.match(css, /\.hero\.hero-compact/);
+  assert.match(css, /\.walkthrough-deck/);
+  assert.match(css, /grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(css, /@media print/i);
 });

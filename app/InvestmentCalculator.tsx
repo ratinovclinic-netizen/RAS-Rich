@@ -1,7 +1,8 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- static local assets avoid runtime image-proxy failures */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 
 type ModeId = "monthly" | "quarterly" | "yearly" | "maturity";
 type ProductId = "fixed" | "clinic" | "equity";
@@ -14,6 +15,7 @@ type GoalId =
   | "education"
   | "security"
   | "business"
+  | "health"
   | "freedom";
 
 type Calculation = {
@@ -123,7 +125,7 @@ const GOALS: Array<{
   {
     id: "preserve",
     icon: "🧱",
-    image: "/brand/goal-preserve.jpg",
+    image: "/brand/goal-preserve-v2.jpg",
     title: "Сохранить деньги",
     description: "Не дать инфляции уменьшить покупательную способность накоплений",
     defaultTarget: 2_000_000,
@@ -131,7 +133,7 @@ const GOALS: Array<{
   {
     id: "car",
     icon: "🚙",
-    image: "/brand/goal-car.jpg",
+    image: "/brand/goal-car-v2.jpg",
     title: "Автомобиль",
     description: "Купить машину полностью или собрать первоначальный взнос",
     defaultTarget: 3_000_000,
@@ -139,7 +141,7 @@ const GOALS: Array<{
   {
     id: "home",
     icon: "🏠",
-    image: "/brand/goal-home.jpg",
+    image: "/brand/goal-home-v2.jpg",
     title: "Квартира",
     description: "Первоначальный взнос, квартира или несколько объектов",
     defaultTarget: APARTMENT_PRICE,
@@ -147,7 +149,7 @@ const GOALS: Array<{
   {
     id: "education",
     icon: "🎓",
-    image: "/brand/goal-education.jpg",
+    image: "/brand/goal-education-v2.jpg",
     title: "Учёба детям",
     description: "Оплатить образование детей без кредита и спешки",
     defaultTarget: 2_500_000,
@@ -155,7 +157,7 @@ const GOALS: Array<{
   {
     id: "security",
     icon: "🛡️",
-    image: "/brand/goal-security.jpg",
+    image: "/brand/goal-security-v2.jpg",
     title: "Запас для семьи",
     description: "Не зависеть от одной зарплаты и неожиданных расходов",
     defaultTarget: 4_000_000,
@@ -163,15 +165,23 @@ const GOALS: Array<{
   {
     id: "business",
     icon: "🚀",
-    image: "/brand/goal-business.jpg",
+    image: "/brand/goal-business-v2.jpg",
     title: "Свой бизнес",
     description: "Запустить или расширить дело без дорогого кредита",
     defaultTarget: 5_000_000,
   },
   {
+    id: "health",
+    icon: "✚",
+    image: "/brand/goal-health-v2.jpg",
+    title: "Здоровье семьи",
+    description: "Иметь резерв на лечение и качественную медицинскую помощь",
+    defaultTarget: 3_000_000,
+  },
+  {
     id: "freedom",
     icon: "🌿",
-    image: "/brand/goal-freedom.jpg",
+    image: "/brand/goal-freedom-v3.jpg",
     title: "Пенсия и свобода",
     description: "Создать капитал, который даст выбор не работать из необходимости",
     defaultTarget: 10_000_000,
@@ -344,6 +354,7 @@ export function InvestmentCalculator({
   const [clinicScenarioId, setClinicScenarioId] = useState<ClinicScenarioId>("base");
   const [equityInvestmentUsd, setEquityInvestmentUsd] = useState(25_000);
   const [copied, setCopied] = useState(false);
+  const [walkthroughStep, setWalkthroughStep] = useState(0);
   const [clientName, setClientName] = useState("");
   const [investorDetails, setInvestorDetails] = useState({
     birthDate: "",
@@ -681,6 +692,7 @@ export function InvestmentCalculator({
       education: "Образование без кредита",
       security: "Запас, который даёт спокойствие",
       business: "Капитал для своего дела",
+      health: "Резерв на здоровье семьи",
       freedom: "Свобода не зависеть от одной зарплаты",
     };
     const coverage = (activeTotal / effectiveGoalAmount) * 100;
@@ -795,7 +807,7 @@ export function InvestmentCalculator({
     <main className="site-shell">
       <header className="topbar">
         <a className="brand" href="#top" aria-label="К началу калькулятора">
-          <Image className="brand-logo" src="/brand/rich-logo-gold.png" width={453} height={270} priority alt="R.I.C.H. — Ratinov Invest Club of Health" />
+          <img className="brand-logo" src="/brand/rich-logo-gold.png" width="453" height="270" fetchPriority="high" alt="R.I.C.H. — Ratinov Invest Club of Health" />
         </a>
         <div className="topbar-note">
           <span className="status-dot" /> Персональный расчёт инвестора
@@ -886,18 +898,8 @@ export function InvestmentCalculator({
         </div>
       </section>
 
-      <section className="hero">
-        <div className="hero-copy">
-          <p className="eyebrow">R.I.C.H. · Ratinov Invest Club of Health</p>
-          <h1>Капитал для здоровья, свободы и будущего.</h1>
-          <p className="hero-text">
-            Ваша персональная стратегия участия в медицине будущего.
-          </p>
-        </div>
-        <div className="hero-principle">
-          <span>Experience of R.I.C.H.</span>
-          <strong>Инвестиционное мышление и медицина будущего.</strong>
-        </div>
+      <section className="hero hero-compact" aria-label="Инвестируй в медицину будущего">
+        <h1>Инвестируй в медицину будущего.</h1>
       </section>
 
       <section className="purpose-section" aria-labelledby="purpose-title">
@@ -927,7 +929,7 @@ export function InvestmentCalculator({
               onClick={() => selectGoal(goal.id)}
               aria-pressed={goalId === goal.id}
             >
-              <Image src={goal.image} width={720} height={420} alt="" aria-hidden="true" />
+              <img src={goal.image} width="720" height="420" loading="lazy" alt="" aria-hidden="true" />
               <span className="purpose-card-copy">
                 <strong>{goal.title}</strong>
                 <small>{goal.id === "home" ? "Взнос или квартира" : goal.description}</small>
@@ -1596,16 +1598,122 @@ export function InvestmentCalculator({
       <section className="proposal-section" id="proposal">
         <div className="proposal-intro no-print">
           <div>
-            <p className="section-kicker">Ваше персональное предложение готово</p>
-            <h2>{clientName.trim() ? `${clientName.trim()}, посмотрите ваш путь к цели` : "Посмотрите ваш путь к цели"}</h2>
-            <p>Ниже — итог, понятный график, три шага роста и документ для обсуждения условий.</p>
+            <p className="section-kicker">Персональный результат готов</p>
+            <h2>{clientName.trim() ? `${clientName.trim()}, ваш путь к цели` : "Ваш путь к цели"}</h2>
+            <p>Четыре коротких шага — проходите их вместе с консультантом.</p>
           </div>
         </div>
+
+        <section className="walkthrough-deck no-print" aria-label="Путь инвестора к цели">
+          <nav className="walkthrough-tabs" aria-label="Шаги презентации">
+            {["Результат", "Цель", "Ускорение", "Решение"].map((label, index) => (
+              <button
+                key={label}
+                type="button"
+                className={walkthroughStep === index ? "active" : ""}
+                onClick={() => setWalkthroughStep(index)}
+                aria-current={walkthroughStep === index ? "step" : undefined}
+              >
+                <span>0{index + 1}</span>
+                <strong>{label}</strong>
+              </button>
+            ))}
+          </nav>
+
+          <div className="walkthrough-stage" aria-live="polite">
+            {walkthroughStep === 0 && (
+              <div className="walkthrough-slide result-slide">
+                <div>
+                  <p className="proposal-label">01 · Ваш результат</p>
+                  <h3>
+                    {clientName.trim() ? `${clientName.trim()}, ` : ""}
+                    в конце у вас будет {product === "equity" ? formatUsd(equityTotalUsd) : formatLocalMoney(activeTotal)}
+                  </h3>
+                  <p>Начальная сумма продолжает работать и создаёт дополнительный доход.</p>
+                </div>
+                <dl className="walkthrough-facts">
+                  <div><dt>Вложение</dt><dd>{product === "equity" ? formatUsd(equityExactInvestmentUsd) : formatLocalMoney(activeAmount)}</dd></div>
+                  <div><dt>Доход</dt><dd>+{product === "equity" ? formatUsd(equityProfitUsd) : formatLocalMoney(activeProfit)}</dd></div>
+                  <div><dt>Доходность</dt><dd>+{percentFormatter.format(activeAnnualRate)}% в год</dd></div>
+                </dl>
+              </div>
+            )}
+
+            {walkthroughStep === 1 && (
+              <div className="walkthrough-slide goal-slide">
+                <div>
+                  <p className="proposal-label">02 · Ваша цель</p>
+                  <h3>
+                    {goalId === "preserve"
+                      ? `Капитал вырастет на ${formatLocalMoney(activeProfit)}`
+                      : goalDifference >= 0
+                        ? `Цель «${selectedGoal.title}» достигнута`
+                        : `Уже закрыто ${percentFormatter.format(goalProgress)}% цели «${selectedGoal.title}»`}
+                  </h3>
+                  <p>
+                    {goalId === "preserve"
+                      ? `Итоговая сумма — ${formatLocalMoney(activeTotal)}.`
+                      : goalDifference >= 0
+                        ? `После достижения цели останется запас ${formatLocalMoney(goalDifference)}.`
+                        : `До полной суммы остаётся ${formatLocalMoney(Math.abs(goalDifference))}.`}
+                  </p>
+                </div>
+                <div className="walkthrough-goal-visual">
+                  <img src={selectedGoal.image} width="720" height="420" loading="lazy" alt="" aria-hidden="true" />
+                  <strong>{goalId === "preserve" ? `+${percentFormatter.format(activeProfit / Math.max(1, activeAmount) * 100)}%` : `${percentFormatter.format(goalProgress)}%`}</strong>
+                  <span>{selectedGoal.title}</span>
+                </div>
+              </div>
+            )}
+
+            {walkthroughStep === 2 && (
+              <div className="walkthrough-slide action-slide">
+                <div>
+                  <p className="proposal-label">03 · Как ускорить</p>
+                  {product === "fixed" ? (
+                    <>
+                      <h3>{bestScenarioGap > 0 ? `Добавляйте по ${formatLocalMoney(suggestedMonthlyTopUp)} в месяц` : "Оставьте проценты работать до конца срока"}</h3>
+                      <p>{bestScenarioGap > 0 ? `За первый год это ${formatLocalMoney(plannedTopUpTotal)} — расчётный итог вырастет до ${formatLocalMoney(projectedGoalTotal)}.` : `Так сохраняется бонус +6% к базовой ставке и максимальный эффект сложного процента.`}</p>
+                    </>
+                  ) : product === "clinic" ? (
+                    <>
+                      <h3>{clinicSuggestedExtraShares > 0 ? `Увеличьте долю ещё на ${clinicSuggestedExtraShares}%` : "Сохраните долю и направляйте доход на рост капитала"}</h3>
+                      <p>{clinicSuggestedExtraShares > 0 ? `Дополнительное вложение — ${formatLocalMoney(clinicSuggestedInvestment)}.` : "Так доля бизнеса и распределяемая прибыль продолжают работать вместе."}</p>
+                    </>
+                  ) : (
+                    <>
+                      <h3>{equitySuggestedExtraShares > 0 ? `Добавьте ещё ${moneyFormatter.format(equitySuggestedExtraShares)} акций` : "Сохраните пакет на весь трёхлетний горизонт"}</h3>
+                      <p>{equitySuggestedExtraShares > 0 ? `Стоимость увеличения пакета — ${formatUsd(equitySuggestedExtraUsd)}.` : "Так капитал участвует и в дивидендах, и в плановом росте стоимости акций."}</p>
+                    </>
+                  )}
+                </div>
+                <span className="walkthrough-action-mark" aria-hidden="true">↗</span>
+              </div>
+            )}
+
+            {walkthroughStep === 3 && (
+              <div className="walkthrough-slide decision-slide">
+                <div>
+                  <p className="proposal-label">04 · Следующее решение</p>
+                  <h3>Зафиксируйте выбранные условия</h3>
+                  <p>Ниже уже подготовлена индивидуальная оферта: проверьте данные, распечатайте и подпишите.</p>
+                </div>
+                <a href="#intent-offer">Перейти к заявлению <span aria-hidden="true">↓</span></a>
+              </div>
+            )}
+          </div>
+
+          <div className="walkthrough-controls">
+            <button type="button" onClick={() => setWalkthroughStep((current) => Math.max(0, current - 1))} disabled={walkthroughStep === 0}>Назад</button>
+            <span>{walkthroughStep + 1} / 4</span>
+            <button type="button" onClick={() => setWalkthroughStep((current) => Math.min(3, current + 1))} disabled={walkthroughStep === 3}>Далее</button>
+          </div>
+        </section>
 
         <article className={`proposal-sheet ${product === "fixed" ? "fixed-proposal" : ""}`}>
           <header className="proposal-header">
             <div className="proposal-brand">
-              <Image src="/brand/rich-logo-gold.png" width={453} height={270} alt="R.I.C.H." />
+              <img src="/brand/rich-logo-gold.png" width="453" height="270" alt="R.I.C.H." />
               <span>
                 <strong>R.I.C.H.</strong>
                 <small>
@@ -1993,7 +2101,7 @@ export function InvestmentCalculator({
             </div>
           </div>
 
-          <div className="proposal-closing compact-closing intent-agreement">
+          <div className="proposal-closing compact-closing intent-agreement" id="intent-offer">
             <div className="intent-title">
               <div>
                 <p className="proposal-label">Предварительная индивидуальная оферта</p>

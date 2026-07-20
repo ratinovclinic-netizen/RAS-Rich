@@ -13,6 +13,37 @@
   --white: #ffffff;
 }
 
+/* Compact, single-message hero */
+.hero.hero-compact {
+  display: flex;
+  align-items: center;
+  min-height: 174px;
+  margin-top: 22px;
+  padding: 34px 48px;
+}
+
+.hero.hero-compact h1 {
+  max-width: 960px;
+  font-size: clamp(38px, 4.5vw, 60px);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+}
+
+@media (max-width: 680px) {
+  .hero.hero-compact {
+    min-height: 132px;
+    margin-top: 14px;
+    padding: 26px 22px;
+  }
+
+  .hero.hero-compact h1 {
+    font-size: clamp(34px, 10.5vw, 44px);
+    letter-spacing: -0.04em;
+    line-height: 1.04;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -5505,4 +5536,381 @@ footer {
     grid-column: auto;
   }
 
+}
+
+/* Investor walkthrough: one clear idea per screen */
+.proposal-intro {
+  margin-bottom: 18px;
+}
+
+.proposal-intro > div {
+  max-width: 780px;
+}
+
+.proposal-intro > div > p:last-child {
+  max-width: none;
+  margin-top: 8px;
+}
+
+.walkthrough-deck {
+  overflow: hidden;
+  border: 1px solid rgba(214, 162, 102, 0.48);
+  border-radius: 24px;
+  background: #fffdf7;
+  box-shadow: 0 20px 54px rgba(15, 53, 38, 0.08);
+}
+
+.walkthrough-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line);
+}
+
+.walkthrough-tabs button {
+  min-width: 0;
+  min-height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: #f3ede3;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.walkthrough-tabs button:last-child {
+  border-right: 0;
+}
+
+.walkthrough-tabs button span {
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.walkthrough-tabs button strong {
+  font-size: 13px;
+}
+
+.walkthrough-tabs button.active {
+  background: var(--green);
+  color: var(--white);
+}
+
+.walkthrough-stage {
+  min-height: 330px;
+}
+
+.walkthrough-slide {
+  min-height: 330px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+  align-items: center;
+  gap: 46px;
+  padding: 42px 48px;
+}
+
+.walkthrough-slide h3 {
+  max-width: 760px;
+  margin: 8px 0 12px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(31px, 4vw, 50px);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+}
+
+.walkthrough-slide p:not(.proposal-label) {
+  max-width: 680px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.walkthrough-facts {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #f4eee4;
+}
+
+.walkthrough-facts > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.walkthrough-facts > div:last-child {
+  border-bottom: 0;
+}
+
+.walkthrough-facts dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.walkthrough-facts dd {
+  margin: 0;
+  color: var(--green);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 19px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.walkthrough-goal-visual {
+  position: relative;
+  min-height: 230px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--green);
+  color: var(--white);
+}
+
+.walkthrough-goal-visual::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(7, 31, 22, 0.06), rgba(7, 31, 22, 0.86));
+}
+
+.walkthrough-goal-visual img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.walkthrough-goal-visual strong,
+.walkthrough-goal-visual span {
+  position: absolute;
+  z-index: 1;
+  left: 22px;
+}
+
+.walkthrough-goal-visual strong {
+  bottom: 46px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 46px;
+}
+
+.walkthrough-goal-visual span {
+  bottom: 22px;
+  font-size: 13px;
+}
+
+.action-slide,
+.decision-slide {
+  background: linear-gradient(112deg, #f5eee2 0 68%, #143e32 68% 100%);
+}
+
+.walkthrough-action-mark {
+  justify-self: center;
+  color: var(--gold);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 96px;
+  line-height: 1;
+}
+
+.decision-slide > a {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 0 22px;
+  border-radius: 12px;
+  background: var(--gold);
+  color: var(--green);
+  font-size: 14px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.walkthrough-controls {
+  display: grid;
+  grid-template-columns: 110px 1fr 110px;
+  align-items: center;
+  border-top: 1px solid var(--line);
+}
+
+.walkthrough-controls button {
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.walkthrough-controls button:disabled {
+  color: #a8afa9;
+  cursor: default;
+}
+
+.walkthrough-controls span {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+#intent-offer {
+  scroll-margin-top: 18px;
+}
+
+@media screen {
+  .proposal-sheet .congratulations-card,
+  .proposal-sheet .goal-progress-card,
+  .proposal-sheet .goal-offer-section,
+  .proposal-sheet .compact-offer-summary,
+  .proposal-sheet .acceleration-section,
+  .proposal-sheet .schedule-section,
+  .proposal-sheet .topup-recommendation,
+  .proposal-sheet .fixed-goal-pitch {
+    display: none;
+  }
+}
+
+/* Eight equally weighted investor goals */
+.purpose-grid {
+  grid-auto-rows: 1fr;
+}
+
+.purpose-card {
+  height: 100%;
+}
+
+@media (max-width: 900px) {
+  .purpose-card:last-child {
+    grid-column: auto;
+  }
+
+  .walkthrough-slide {
+    grid-template-columns: 1fr 0.78fr;
+    gap: 26px;
+    padding: 34px 30px;
+  }
+}
+
+@media (max-width: 680px) {
+  .purpose-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .purpose-card,
+  .purpose-card:last-child,
+  .purpose-card > img {
+    min-height: 160px;
+    height: 160px;
+  }
+
+  .purpose-card-copy {
+    right: 11px;
+    bottom: 11px;
+    left: 11px;
+  }
+
+  .purpose-card-copy strong {
+    font-size: 19px;
+    line-height: 1.02;
+  }
+
+  .purpose-card-copy small {
+    font-size: 10px;
+    line-height: 1.22;
+  }
+
+  .walkthrough-tabs button {
+    min-height: 54px;
+    display: grid;
+    place-content: center;
+    gap: 2px;
+    padding: 5px 3px;
+    text-align: center;
+  }
+
+  .walkthrough-tabs button strong {
+    font-size: 9px;
+  }
+
+  .walkthrough-stage,
+  .walkthrough-slide {
+    min-height: 380px;
+  }
+
+  .walkthrough-slide {
+    grid-template-columns: 1fr;
+    align-content: center;
+    gap: 20px;
+    padding: 28px 20px;
+  }
+
+  .walkthrough-slide h3 {
+    font-size: 31px;
+  }
+
+  .walkthrough-slide p:not(.proposal-label) {
+    font-size: 13px;
+  }
+
+  .walkthrough-facts > div {
+    padding: 10px 12px;
+  }
+
+  .walkthrough-facts dd {
+    font-size: 15px;
+  }
+
+  .walkthrough-goal-visual {
+    min-height: 150px;
+  }
+
+  .walkthrough-goal-visual strong {
+    bottom: 37px;
+    font-size: 37px;
+  }
+
+  .walkthrough-goal-visual span {
+    bottom: 16px;
+  }
+
+  .action-slide,
+  .decision-slide {
+    background: linear-gradient(180deg, #f5eee2 0 78%, #143e32 78% 100%);
+  }
+
+  .walkthrough-action-mark {
+    display: none;
+  }
+
+  .decision-slide > a {
+    align-self: end;
+  }
+
+  .walkthrough-controls {
+    grid-template-columns: 88px 1fr 88px;
+  }
+
+  .proposal-sheet {
+    margin-top: 18px;
+  }
+
+  .offer-document-meta input,
+  .legal-form-grid input {
+    min-height: 46px;
+    font-size: 14px;
+  }
+
+  .personal-data-consent {
+    padding: 14px;
+    font-size: 12px;
+  }
 }
