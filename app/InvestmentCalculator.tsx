@@ -105,7 +105,12 @@ const TERM_RATES: Record<number, number> = {
   24: 28,
   36: 30,
 };
-const RETENTION_BONUS = 6;
+const PAYOUT_BONUS: Record<ModeId, number> = {
+  monthly: 0,
+  quarterly: 2,
+  yearly: 4,
+  maturity: 6,
+};
 
 const GOALS: Array<{
   id: GoalId;
@@ -184,27 +189,29 @@ const MODES: Array<{
     id: "monthly",
     short: "Получать каждый месяц",
     title: "Проценты каждый месяц",
-    description: "Получили проценты — они больше не растут.",
-    badge: "Деньги сейчас",
+    description: "Регулярный доход без бонуса к ставке.",
+    badge: "+0%",
   },
   {
     id: "quarterly",
-    short: "Добавлять раз в квартал",
-    title: "Рост каждые 3 месяца",
-    description: "Доход прибавляется 4 раза в год и растёт быстрее.",
+    short: "Раз в квартал",
+    title: "Выплата раз в квартал",
+    description: "Проценты капитализируются каждые 3 месяца.",
+    badge: "+2%",
   },
   {
     id: "yearly",
-    short: "Добавлять раз в год",
-    title: "Проценты прибавляются раз в год",
-    description: "Раз в год доход прибавляется к вашим деньгам.",
+    short: "Раз в год",
+    title: "Выплата раз в год",
+    description: "Доход остаётся в работе до годовой выплаты.",
+    badge: "+4%",
   },
   {
     id: "maturity",
-    short: "Оставить до конца",
-    title: "Максимум сложного процента",
-    description: "Проценты прибавляются каждый месяц. Самый большой итог.",
-    badge: "Самый большой итог",
+    short: "В конце срока",
+    title: "Вся сумма в конце",
+    description: "+6% доступно только при сроке больше 2 лет.",
+    badge: "+6% на 3 года",
   },
 ];
 
@@ -233,7 +240,9 @@ function roundUp(value: number, step: number) {
 
 function getAutomaticRate(months: number, mode: ModeId) {
   const baseRate = TERM_RATES[months] ?? TERM_RATES[6];
-  const retentionBonus = mode === "monthly" ? 0 : RETENTION_BONUS;
+  const retentionBonus = mode === "maturity" && months <= 24
+    ? 0
+    : PAYOUT_BONUS[mode];
   return {
     baseRate,
     retentionBonus,
@@ -441,14 +450,18 @@ export function InvestmentCalculator({
   );
 
   const standard = comparisons.find((item) => item.id === "monthly")!.result;
-  const maxGrowth = comparisons.find((item) => item.id === "maturity")!.result;
+  const bestComparison = comparisons.reduce((best, item) =>
+    item.result.total > best.result.total ? item : best,
+  );
+  const maxGrowth = bestComparison.result;
   const selectedMode = MODES.find((item) => item.id === mode)!;
   const retentionGain = maxGrowth.profit - standard.profit;
   const bankRateAdvantage = annualRate - BANK_RATE_BENCHMARK;
   const inflationRateAdvantage = result.effectiveAnnualRate - INFLATION_RATE;
   const fixedSchedule = useMemo(() => {
     const checkpoints = [0];
-    for (let checkpoint = 3; checkpoint < months; checkpoint += 3) {
+    const checkpointStep = months <= 12 ? 3 : 6;
+    for (let checkpoint = checkpointStep; checkpoint < months; checkpoint += checkpointStep) {
       checkpoints.push(checkpoint);
     }
     checkpoints.push(months);
@@ -539,8 +552,7 @@ export function InvestmentCalculator({
     : 0;
 
   const contributionMonths = Math.min(12, months);
-  const maturityRate = getAutomaticRate(months, "maturity").totalRate;
-  const monthlyGrowthRate = maturityRate / 100 / 12;
+  const monthlyGrowthRate = bestComparison.rate / 100 / 12;
   let contributionGrowthFactor = 0;
   for (let month = 1; month <= contributionMonths; month += 1) {
     contributionGrowthFactor += Math.pow(1 + monthlyGrowthRate, months - month);
@@ -933,7 +945,7 @@ export function InvestmentCalculator({
             <span className="step-number">03</span>
             <div>
               <p className="section-kicker">Доходный капитал</p>
-              <h2>Сколько вложить и на какой срок?</h2>
+              <h2>Настройте условия — ставка посчитается сама</h2>
             </div>
           </div>
 
@@ -982,8 +994,44 @@ export function InvestmentCalculator({
             </div>
           </div>
 
+          <fieldset className="field-block payout-period-field">
+            <legend>Как часто получать доход?</legend>
+            <p className="mode-lead">
+              Чем реже выплата, тем выше бонус к базовой ставке. Сначала выберите период — итоговую ставку увидите ниже.
+            </p>
+            <div className="mode-options compact-payout-options">
+              {MODES.map((item, index) => {
+                const itemBonus = getAutomaticRate(months, item.id).retentionBonus;
+                const maturityBonusLocked = item.id === "maturity" && months <= 24;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`mode-card ${mode === item.id ? "active" : ""}`}
+                    onClick={() => setMode(item.id)}
+                    aria-pressed={mode === item.id}
+                  >
+                    <span className="radio-dot" aria-hidden="true" />
+                    <span className="mode-copy">
+                      <span className="mode-order">Период {index + 1}</span>
+                      <strong>{item.short}</strong>
+                      <small>{item.description}</small>
+                      <span className="mode-result-label">Бонус к ставке</span>
+                      <span className="mode-result">
+                        {maturityBonusLocked ? "0% сейчас" : `+${itemBonus}%`}
+                      </span>
+                      {maturityBonusLocked && (
+                        <span className="mode-extra">+6% откроется при сроке 3 года</span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+
           <fieldset className="field-block term-first-block">
-            <legend>Срок: чем дольше, тем выше базовая ставка</legend>
+            <legend>На какой срок оставить капитал?</legend>
             <div className="term-options">
               {TERMS.map((term) => (
                 <button
@@ -994,7 +1042,7 @@ export function InvestmentCalculator({
                   aria-pressed={months === term}
                 >
                   <span>{termLabel(term)}</span>
-                  <strong>{TERM_RATES[term]}%</strong>
+                  <strong>{TERM_RATES[term]}% база</strong>
                 </button>
               ))}
             </div>
@@ -1003,33 +1051,34 @@ export function InvestmentCalculator({
           <div className="field-block automatic-rate-block">
             <div className="automatic-rate-heading">
               <div>
-                <span>Ставка по выбранным условиям</span>
+                <span>Ваша конечная ставка</span>
                 <strong>{annualRate}% годовых</strong>
               </div>
-              <span className="locked-rate">Назначена автоматически</span>
+              <span className="locked-rate">Рассчитана автоматически</span>
             </div>
             <div className="rate-breakdown">
               <div>
-                <span>База за срок</span>
+                <span>За срок</span>
                 <strong>{rateDetails.baseRate}%</strong>
                 <small>{termLabel(months)}</small>
               </div>
               <span className="rate-plus">+</span>
               <div>
-                <span>За капитализацию</span>
+                <span>За период выплаты</span>
                 <strong>{rateDetails.retentionBonus}%</strong>
-                <small>{mode === "monthly" ? "проценты забираются" : "проценты остаются"}</small>
+                <small>{selectedMode.short.toLowerCase()}</small>
               </div>
               <span className="rate-equals">=</span>
               <div className="rate-total">
                 <span>Итого</span>
                 <strong>{annualRate}%</strong>
-                <small>фиксировано условиями</small>
+                <small>зафиксировано расчётом</small>
               </div>
             </div>
             <p className="rate-hint">
-              Максимум — <strong>30% за срок + 6 п.п.</strong>, если проценты не забирать.
-              При 3 годах и выплате в конце ставка составляет 36%, а ежемесячный сложный процент увеличивает тело капитала.
+              {mode === "maturity" && months <= 24
+                ? "Бонус +6% за выплату в конце доступен только при сроке больше 2 лет. Выберите 3 года — и ставка вырастет автоматически."
+                : `Ваш бонус за вариант «${selectedMode.short}» — +${rateDetails.retentionBonus}%. Максимальная ставка 36% доступна на 3 года с выплатой в конце.`}
             </p>
           </div>
 
@@ -1161,24 +1210,30 @@ export function InvestmentCalculator({
             </div>
           ) : (
             <div className="payment-note accent-note">
-              <span>Единая выплата в конце</span>
+              <span>
+                {mode === "quarterly"
+                  ? "Капитализация раз в квартал"
+                  : mode === "yearly"
+                    ? "Капитализация раз в год"
+                    : "Единая выплата в конце"}
+              </span>
               <strong>{formatLocalMoney(result.endPayment)}</strong>
-              <small>Весь доход остаётся в работе до погашения займа.</small>
+              <small>Проценты увеличивают тело капитала, итог выплачивается при завершении срока.</small>
             </div>
           )}
 
           <div className="benefit-note">
             <span aria-hidden="true">↗</span>
             <p>
-              {mode === "maturity" ? (
+              {result.total >= maxGrowth.total - 1 ? (
                 <>
-                  Вы сохраняете в капитале ещё <strong>{formatLocalMoney(retentionGain)}</strong>,
-                  которое теряется при ежемесячном изъятии процентов.
+                  Вы выбрали самый сильный вариант для этого срока. Он даёт на
+                  <strong> {formatLocalMoney(retentionGain)}</strong> больше ежемесячных выплат.
                 </>
               ) : (
                 <>
-                  Если оставить проценты до конца срока, итог будет выше ещё на
-                  <strong> {formatLocalMoney(maxGrowth.profit - result.profit)}</strong>.
+                  Самый сильный вариант сейчас — «{bestComparison.short.toLowerCase()}».
+                  Итог будет выше ещё на <strong>{formatLocalMoney(maxGrowth.profit - result.profit)}</strong>.
                 </>
               )}
             </p>
@@ -1534,7 +1589,7 @@ export function InvestmentCalculator({
           </div>
         </div>
 
-        <article className="proposal-sheet">
+        <article className={`proposal-sheet ${product === "fixed" ? "fixed-proposal" : ""}`}>
           <header className="proposal-header">
             <div className="proposal-brand">
               <Image src="/brand/rich-logo-gold.png" width={453} height={270} alt="R.I.C.H." />
@@ -1609,6 +1664,41 @@ export function InvestmentCalculator({
               <strong>+{percentFormatter.format(activeAnnualRate)}%</strong>
             </div>
           </div>
+
+          {product === "fixed" && (
+            <div className={`fixed-goal-pitch ${goalDifference >= 0 ? "goal-reached" : "goal-in-progress"}`}>
+              <div>
+                <p className="proposal-label">Что это даёт лично вам</p>
+                {goalId === "preserve" ? (
+                  <>
+                    <h3>{clientName.trim() ? `${clientName.trim()}, ваш капитал не просто сохраняется — он растёт` : "Ваш капитал не просто сохраняется — он растёт"}</h3>
+                    <p>
+                      Через {termLabel(months)} расчётный капитал составит <strong>{formatLocalMoney(activeTotal)}</strong>.
+                      Доход <strong>{formatLocalMoney(activeProfit)}</strong> создаёт запас сверх первоначальной суммы и помогает защитить её покупательную способность.
+                    </p>
+                  </>
+                ) : goalDifference >= 0 ? (
+                  <>
+                    <h3>{clientName.trim() ? `${clientName.trim()}, цель «${selectedGoal.title}» уже достижима` : `Цель «${selectedGoal.title}» уже достижима`}</h3>
+                    <p>
+                      К концу срока у вас будет <strong>{formatLocalMoney(activeTotal)}</strong> — это на
+                      <strong> {formatLocalMoney(goalDifference)}</strong> больше выбранной стоимости цели.
+                      Вам не нужно откладывать решение: расчёт уже показывает достаточный капитал и финансовый запас.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3>{clientName.trim() ? `${clientName.trim()}, вы уже закрываете ${percentFormatter.format(goalProgress)}% цели` : `Вы уже закрываете ${percentFormatter.format(goalProgress)}% цели`}</h3>
+                    <p>
+                      До цели «{selectedGoal.title}» остаётся <strong>{formatLocalMoney(Math.abs(goalDifference))}</strong>.
+                      Добавляйте по <strong>{formatLocalMoney(suggestedMonthlyTopUp)} в месяц</strong> в течение первого года — и расчётный итог вырастет до <strong>{formatLocalMoney(projectedGoalTotal)}</strong>.
+                    </p>
+                  </>
+                )}
+              </div>
+              <strong className="fixed-goal-action">Следующий шаг: зафиксировать условия и подготовить основной договор.</strong>
+            </div>
+          )}
 
           <div className="goal-progress-card">
             <div className="goal-progress-copy">
@@ -1722,15 +1812,17 @@ export function InvestmentCalculator({
                 <div className="acceleration-heading">
                   <p className="proposal-label">Три шага к цели быстрее</p>
                   <h3>
-                    Сейчас расчёт закрывает {percentFormatter.format(goalProgress)}% цели «{selectedGoal.title}»
+                    {goalDifference >= 0
+                      ? "Закрепите достигнутый результат"
+                      : `Сейчас расчёт закрывает ${percentFormatter.format(goalProgress)}% цели «${selectedGoal.title}»`}
                   </h3>
                 </div>
                 <ol>
                   <li>
                     <span>01</span>
                     <div>
-                      <strong>Не забирать проценты</strong>
-                      <p>Это добавляет +6 п.п. к ставке и включает сложный процент.</p>
+                      <strong>{mode === "maturity" && months === 36 ? "Сохранить выплату в конце срока" : "Выбрать выплату в конце на 3 года"}</strong>
+                      <p>{mode === "maturity" && months === 36 ? "Так сохраняется бонус +6% и максимальная ставка 36%." : "Это открывает бонус +6% и максимальную ставку 36%."}</p>
                     </div>
                   </li>
                   <li>
@@ -1743,8 +1835,8 @@ export function InvestmentCalculator({
                   <li>
                     <span>03</span>
                     <div>
-                      <strong>{months < 36 ? "Продлить срок до следующей ступени" : "Зафиксировать максимальный срок"}</strong>
-                      <p>{months < 36 ? "Более долгий срок повышает базовую ставку до 30%." : "Три года дают максимальную базу 30% и максимум времени сложному проценту."}</p>
+                      <strong>Зафиксировать условия</strong>
+                      <p>Подписать протокол намерений и перейти к подготовке основного договора.</p>
                     </div>
                   </li>
                 </ol>
@@ -1903,9 +1995,7 @@ export function InvestmentCalculator({
               <div><span>Расчётный итог</span><strong>{product === "equity" ? formatUsd(equityTotalUsd) : formatLocalMoney(activeTotal)}</strong></div>
             </div>
             <p className="intent-copy">
-              Стороны подтверждают намерение обсудить оформление выбранного продукта на указанных условиях.
-              Этот протокол фиксирует параметры предварительного расчёта, не заменяет основной договор и сам по себе
-              не создаёт обязанности перечислить или принять денежные средства.
+              Стороны фиксируют выбранные параметры для подготовки основного договора. Протокол является предварительным и не заменяет основной договор.
             </p>
             <div className="proposal-signatures">
               <span>Инвестор ____________________ / {clientName.trim() || "Ф. И. О."}</span>

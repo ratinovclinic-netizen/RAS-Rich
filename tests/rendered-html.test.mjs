@@ -31,10 +31,13 @@ test("server-renders the complete R.I.C.H. investor flow", async () => {
   const html = await response.text();
   assert.match(html, /<title>R\.I\.C\.H\. — Ratinov Invest Club of Health<\/title>/i);
   assert.match(html, /rich-logo-gold\.png/i);
-  assert.match(html, /Одинаковая логика — кыргызский сом или доллар США/i);
+  assert.doesNotMatch(html, /class="currency-section"/i);
   assert.match(html, /Выберите инвестиционный продукт/i);
   assert.match(html, /Зачем вам увеличивать капитал\?/i);
   assert.match(html, /Доходный капитал/i);
+  assert.match(html, /Как часто получать доход\?/i);
+  assert.match(html, /Ваша конечная ставка/i);
+  assert.match(html, /Что это даёт лично вам/i);
   assert.match(html, /36%/i);
   assert.match(html, /Три шага к цели быстрее/i);
   assert.match(html, /График роста/i);
@@ -56,7 +59,11 @@ test("keeps branded assets and fixed-income rules in source", async () => {
   assert.match(component, /12:\s*26/);
   assert.match(component, /24:\s*28/);
   assert.match(component, /36:\s*30/);
-  assert.match(component, /const RETENTION_BONUS = 6/);
+  assert.match(component, /monthly:\s*0/);
+  assert.match(component, /quarterly:\s*2/);
+  assert.match(component, /yearly:\s*4/);
+  assert.match(component, /maturity:\s*6/);
+  assert.match(component, /mode === "maturity" && months <= 24/);
   assert.match(component, /const BANK_RATE_BENCHMARK = 14/);
   assert.match(css, /--green:\s*#0f3526/i);
   assert.match(css, /--gold:\s*#d6a266/i);
