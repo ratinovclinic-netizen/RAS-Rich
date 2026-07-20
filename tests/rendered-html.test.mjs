@@ -24,13 +24,14 @@ async function render(pathname = "/") {
 }
 
 test("server-renders the complete R.I.C.H. investor flow", async () => {
-  const response = await render("/som-usd");
+  const response = await render("/");
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>R\.I\.C\.H\. — калькулятор в сомах и долларах<\/title>/i);
+  assert.match(html, /<title>R\.I\.C\.H\. — Ratinov Invest Club of Health<\/title>/i);
   assert.match(html, /rich-logo-gold\.png/i);
+  assert.match(html, /Одинаковая логика — кыргызский сом или доллар США/i);
   assert.match(html, /Выберите инвестиционный продукт/i);
   assert.match(html, /Зачем вам увеличивать капитал\?/i);
   assert.match(html, /Доходный капитал/i);

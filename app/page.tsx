@@ -4,8 +4,8 @@ export default function Home() {
   return (
     <InvestmentCalculator
       initialCurrency="KGS"
-      currencyOptions={["KGS"]}
-      usdModelRate={87.5}
+      currencyOptions={["KGS", "USD"]}
+      usdModelRate={100}
     />
   );
 }
