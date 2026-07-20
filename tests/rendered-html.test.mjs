@@ -41,7 +41,11 @@ test("server-renders the complete R.I.C.H. investor flow", async () => {
   assert.match(html, /36%/i);
   assert.match(html, /Три шага к цели быстрее/i);
   assert.match(html, /График роста/i);
-  assert.match(html, /Протокол инвестиционных намерений/i);
+  assert.match(html, /Предварительная индивидуальная оферта/i);
+  assert.match(html, /Персональные данные инвестора/i);
+  assert.match(html, /Условия индивидуальной оферты/i);
+  assert.match(html, /обработкой персональных данных/i);
+  assert.match(html, /Распечатать оферту \/ сохранить PDF/i);
   assert.doesNotMatch(html, /Codex is working|Your site is taking shape/i);
 });
 
@@ -63,7 +67,8 @@ test("keeps branded assets and fixed-income rules in source", async () => {
   assert.match(component, /quarterly:\s*2/);
   assert.match(component, /yearly:\s*4/);
   assert.match(component, /maturity:\s*6/);
-  assert.match(component, /mode === "maturity" && months <= 24/);
+  assert.match(component, /const retentionBonus = PAYOUT_BONUS\[mode\]/);
+  assert.doesNotMatch(component, /mode === "maturity" && months <= 24/);
   assert.match(component, /const BANK_RATE_BENCHMARK = 14/);
   assert.match(css, /--green:\s*#0f3526/i);
   assert.match(css, /--gold:\s*#d6a266/i);

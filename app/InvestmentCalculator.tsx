@@ -210,8 +210,8 @@ const MODES: Array<{
     id: "maturity",
     short: "В конце срока",
     title: "Вся сумма в конце",
-    description: "+6% доступно только при сроке больше 2 лет.",
-    badge: "+6% на 3 года",
+    description: "Проценты остаются до конца и дают +6% к базовой ставке.",
+    badge: "+6%",
   },
 ];
 
@@ -240,9 +240,7 @@ function roundUp(value: number, step: number) {
 
 function getAutomaticRate(months: number, mode: ModeId) {
   const baseRate = TERM_RATES[months] ?? TERM_RATES[6];
-  const retentionBonus = mode === "maturity" && months <= 24
-    ? 0
-    : PAYOUT_BONUS[mode];
+  const retentionBonus = PAYOUT_BONUS[mode];
   return {
     baseRate,
     retentionBonus,
@@ -347,6 +345,21 @@ export function InvestmentCalculator({
   const [equityInvestmentUsd, setEquityInvestmentUsd] = useState(25_000);
   const [copied, setCopied] = useState(false);
   const [clientName, setClientName] = useState("");
+  const [investorDetails, setInvestorDetails] = useState({
+    birthDate: "",
+    pin: "",
+    passport: "",
+    issuedBy: "",
+    address: "",
+    phone: "",
+    email: "",
+    offererName: "",
+    offererInn: "",
+    offererAddress: "",
+    offererRepresentative: "",
+    offerNumber: "",
+    offerValidUntil: "",
+  });
   const [goalId, setGoalId] = useState<GoalId>("preserve");
   const [goalAmount, setGoalAmount] = useState(2_000_000);
 
@@ -735,6 +748,13 @@ export function InvestmentCalculator({
     }
   }
 
+  function updateInvestorDetail(
+    field: keyof typeof investorDetails,
+    value: string,
+  ) {
+    setInvestorDetails((current) => ({ ...current, [field]: value }));
+  }
+
   function printProposal() {
     window.print();
   }
@@ -1002,7 +1022,6 @@ export function InvestmentCalculator({
             <div className="mode-options compact-payout-options">
               {MODES.map((item, index) => {
                 const itemBonus = getAutomaticRate(months, item.id).retentionBonus;
-                const maturityBonusLocked = item.id === "maturity" && months <= 24;
                 return (
                   <button
                     key={item.id}
@@ -1017,12 +1036,7 @@ export function InvestmentCalculator({
                       <strong>{item.short}</strong>
                       <small>{item.description}</small>
                       <span className="mode-result-label">Бонус к ставке</span>
-                      <span className="mode-result">
-                        {maturityBonusLocked ? "0% сейчас" : `+${itemBonus}%`}
-                      </span>
-                      {maturityBonusLocked && (
-                        <span className="mode-extra">+6% откроется при сроке 3 года</span>
-                      )}
+                      <span className="mode-result">+{itemBonus}%</span>
                     </span>
                   </button>
                 );
@@ -1076,9 +1090,8 @@ export function InvestmentCalculator({
               </div>
             </div>
             <p className="rate-hint">
-              {mode === "maturity" && months <= 24
-                ? "Бонус +6% за выплату в конце доступен только при сроке больше 2 лет. Выберите 3 года — и ставка вырастет автоматически."
-                : `Ваш бонус за вариант «${selectedMode.short}» — +${rateDetails.retentionBonus}%. Максимальная ставка 36% доступна на 3 года с выплатой в конце.`}
+              Ваш бонус за вариант «{selectedMode.short}» — +{rateDetails.retentionBonus}% к базовой ставке.
+              Максимальная ставка 36% доступна на 3 года с выплатой в конце.
             </p>
           </div>
 
@@ -1821,8 +1834,8 @@ export function InvestmentCalculator({
                   <li>
                     <span>01</span>
                     <div>
-                      <strong>{mode === "maturity" && months === 36 ? "Сохранить выплату в конце срока" : "Выбрать выплату в конце на 3 года"}</strong>
-                      <p>{mode === "maturity" && months === 36 ? "Так сохраняется бонус +6% и максимальная ставка 36%." : "Это открывает бонус +6% и максимальную ставку 36%."}</p>
+                      <strong>{mode === "maturity" ? "Сохранить выплату в конце срока" : "Перенести выплату на конец срока"}</strong>
+                      <p>{mode === "maturity" ? "Так сохраняется бонус +6% к базовой ставке." : "Это добавляет +6% к базе; на 3 года итоговая ставка составит 36%."}</p>
                     </div>
                   </li>
                   <li>
@@ -1982,35 +1995,129 @@ export function InvestmentCalculator({
 
           <div className="proposal-closing compact-closing intent-agreement">
             <div className="intent-title">
-              <p className="proposal-label">Документ для обсуждения и подписи</p>
-              <h3>Протокол инвестиционных намерений</h3>
+              <div>
+                <p className="proposal-label">Предварительная индивидуальная оферта</p>
+                <h3>Заявление инвестора о намерении и акцепте условий</h3>
+              </div>
+              <div className="offer-document-meta">
+                <label>
+                  <span>№ оферты</span>
+                  <input value={investorDetails.offerNumber} onChange={(event) => updateInvestorDetail("offerNumber", event.target.value)} placeholder="________" />
+                </label>
+                <label>
+                  <span>Действует до</span>
+                  <input value={investorDetails.offerValidUntil} onChange={(event) => updateInvestorDetail("offerValidUntil", event.target.value)} placeholder="__.__.____" />
+                </label>
+              </div>
             </div>
+
+            <div className="legal-form-section">
+              <h4>1. Сведения об оференте</h4>
+              <div className="legal-form-grid offerer-grid">
+                <label className="wide-field">
+                  <span>Юридическое наименование</span>
+                  <input value={investorDetails.offererName} onChange={(event) => updateInvestorDetail("offererName", event.target.value)} placeholder="ОсОО / организация" />
+                </label>
+                <label>
+                  <span>ИНН</span>
+                  <input value={investorDetails.offererInn} onChange={(event) => updateInvestorDetail("offererInn", event.target.value)} placeholder="____________" />
+                </label>
+                <label className="wide-field">
+                  <span>Юридический адрес</span>
+                  <input value={investorDetails.offererAddress} onChange={(event) => updateInvestorDetail("offererAddress", event.target.value)} placeholder="город, улица, дом" />
+                </label>
+                <label>
+                  <span>Представитель</span>
+                  <input value={investorDetails.offererRepresentative} onChange={(event) => updateInvestorDetail("offererRepresentative", event.target.value)} placeholder="Ф. И. О., должность" />
+                </label>
+              </div>
+            </div>
+
+            <div className="legal-form-section investor-data-section">
+              <h4>2. Персональные данные инвестора</h4>
+              <div className="legal-form-grid investor-data-grid">
+                <label className="wide-field">
+                  <span>Фамилия, имя, отчество</span>
+                  <input value={clientName} onChange={(event) => setClientName(event.target.value)} placeholder="Ф. И. О. полностью" />
+                </label>
+                <label>
+                  <span>Дата рождения</span>
+                  <input value={investorDetails.birthDate} onChange={(event) => updateInvestorDetail("birthDate", event.target.value)} placeholder="__.__.____" />
+                </label>
+                <label>
+                  <span>ПИН</span>
+                  <input value={investorDetails.pin} onChange={(event) => updateInvestorDetail("pin", event.target.value)} placeholder="______________" />
+                </label>
+                <label>
+                  <span>Паспорт</span>
+                  <input value={investorDetails.passport} onChange={(event) => updateInvestorDetail("passport", event.target.value)} placeholder="серия и номер" />
+                </label>
+                <label className="wide-field">
+                  <span>Кем и когда выдан</span>
+                  <input value={investorDetails.issuedBy} onChange={(event) => updateInvestorDetail("issuedBy", event.target.value)} placeholder="орган, дата выдачи" />
+                </label>
+                <label className="wide-field">
+                  <span>Адрес регистрации</span>
+                  <input value={investorDetails.address} onChange={(event) => updateInvestorDetail("address", event.target.value)} placeholder="полный адрес" />
+                </label>
+                <label>
+                  <span>Телефон</span>
+                  <input value={investorDetails.phone} onChange={(event) => updateInvestorDetail("phone", event.target.value)} placeholder="+996 ___ ___ ___" />
+                </label>
+                <label>
+                  <span>Электронная почта</span>
+                  <input type="email" value={investorDetails.email} onChange={(event) => updateInvestorDetail("email", event.target.value)} placeholder="name@example.com" />
+                </label>
+              </div>
+            </div>
+
+            <div className="legal-form-section offer-conditions-section">
+              <h4>3. Условия индивидуальной оферты</h4>
             <div className="intent-terms">
-              <div><span>Инвестор</span><strong>{clientName.trim() || "________________"}</strong></div>
               <div><span>Продукт</span><strong>{product === "fixed" ? "Доходный капитал" : product === "clinic" ? "Доля в клинике" : "Акции RS Holding"}</strong></div>
               <div><span>Сумма</span><strong>{product === "equity" ? formatUsd(equityExactInvestmentUsd) : formatLocalMoney(activeAmount)}</strong></div>
-              <div><span>Цель</span><strong>{selectedGoal.title}</strong></div>
-              {product === "fixed" && <div><span>Срок и ставка</span><strong>{termLabel(months)} · {annualRate}% годовых</strong></div>}
-              {product === "fixed" && <div><span>Получение дохода</span><strong>{selectedMode.short}</strong></div>}
+              {product === "fixed" && <div><span>Срок</span><strong>{termLabel(months)}</strong></div>}
+              {product === "fixed" && <div><span>Базовая ставка</span><strong>{rateDetails.baseRate}% годовых</strong></div>}
+              {product === "fixed" && <div><span>Бонус за выплату</span><strong>+{rateDetails.retentionBonus}%</strong></div>}
+              {product === "fixed" && <div><span>Итоговая ставка</span><strong>{annualRate}% годовых</strong></div>}
+              {product === "fixed" && <div><span>Порядок выплаты</span><strong>{selectedMode.short}</strong></div>}
               <div><span>Расчётный итог</span><strong>{product === "equity" ? formatUsd(equityTotalUsd) : formatLocalMoney(activeTotal)}</strong></div>
             </div>
-            <p className="intent-copy">
-              Стороны фиксируют выбранные параметры для подготовки основного договора. Протокол является предварительным и не заменяет основной договор.
+            </div>
+
+            <div className="legal-clauses">
+              <p>
+                <strong>4. Предмет.</strong> Оферент предлагает Инвестору заключить основной договор по выбранному продукту на указанных выше условиях. Подписанием настоящего заявления Инвестор подтверждает намерение перейти к подготовке и согласованию основного договора.
+              </p>
+              <p>
+                <strong>5. Акцепт и обязательства.</strong> Подпись Инвестора подтверждает принятие параметров предварительной индивидуальной оферты для подготовки основного договора. Обязанность перечислить денежные средства и обязанность Оферента принять их возникают только после подписания сторонами основного договора и выполнения предусмотренных им условий.
+              </p>
+              <p>
+                <strong>6. Расчёт и риски.</strong> Указанные доход и итог являются расчётными. Порядок досрочного выхода, обеспечение, налогообложение, ответственность сторон и гарантии фиксируются исключительно в основном договоре.
+              </p>
+              <p>
+                <strong>7. Персональные данные.</strong> Инвестор даёт Оференту конкретное и осознанное согласие на сбор, запись, хранение, уточнение и использование указанных в форме данных исключительно для идентификации, подготовки, заключения и исполнения основного договора. Срок обработки — период договорных отношений и обязательный срок хранения документов; отзыв согласия направляется Оференту письменно. Передача допускается сотрудникам, подрядчикам и государственным органам только в объёме, необходимом для указанной цели или требуемом законом.
+              </p>
+            </div>
+
+            <label className="personal-data-consent">
+              <span aria-hidden="true">□</span>
+              <strong>С условиями индивидуальной оферты и обработкой персональных данных ознакомлен(а), согласен(на).</strong>
+            </label>
+
+            <p className="legal-source-note">
+              Правовая основа формы: Гражданский кодекс Кыргызской Республики и Цифровой кодекс Кыргызской Республики. Перед использованием как юридически обязательного документа реквизиты и текст должны быть утверждены юристом Оферента.
             </p>
             <div className="proposal-signatures">
               <span>Инвестор ____________________ / {clientName.trim() || "Ф. И. О."}</span>
-              <span>Представитель R.I.C.H. ____________________</span>
-              <span>Дата «____» __________ 20____ г.</span>
+              <span>Представитель Оферента ____________________</span>
+              <span>Дата и место: «____» __________ 20____ г., г. __________</span>
             </div>
-            <p>
-              Предварительный расчёт. Финальные условия, порядок выплат,
-              права и обязательства сторон фиксируются договором.
-            </p>
           </div>
 
           <div className="proposal-actions no-print">
             <button className="print-button" type="button" onClick={printProposal}>
-              Печать / сохранить в PDF <span aria-hidden="true">↗</span>
+              Распечатать оферту / сохранить PDF <span aria-hidden="true">↗</span>
             </button>
             <button className="secondary-share-button" type="button" onClick={shareProposal}>
               Отправить предложение
