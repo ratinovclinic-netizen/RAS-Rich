@@ -35,20 +35,23 @@ export async function runInvestmentAgent(env: AgentEnvironment, deliver: boolean
   }));
   const inferredWon = funnelMeta.flatMap((funnel) => funnel.stages.filter((stage) => stage.semantics === "S").map((stage) => stage.id));
   const inferredLost = funnelMeta.flatMap((funnel) => funnel.stages.filter((stage) => stage.semantics === "F").map((stage) => stage.id));
-  const deals: Array<Record<string, unknown>> = [];
-  let start = 0;
-  do {
-    const filter = categoryIds.length ? { "@categoryId": categoryIds } : {};
-    const page = await bitrix.call<{ items?: Array<Record<string, unknown>> }>("crm.item.list", {
+  const filter = categoryIds.length ? { "@categoryId": categoryIds } : {};
+  const loadPage = (start: number) => bitrix.call<{ items?: Array<Record<string, unknown>> }>("crm.item.list", {
       entityTypeId: config.bitrix.entityTypeId,
       filter,
       select: ["id", "categoryId", "stageId", "opportunity", "currencyId", "assignedById", "createdTime", "updatedTime"],
-      order: { id: "ASC" },
+      order: { updatedTime: "DESC" },
       start,
     });
-    deals.push(...(page.result.items || []));
-    start = typeof page.next === "number" ? page.next : -1;
-  } while (start >= 0 && deals.length < 10_000);
+  const firstPage = await loadPage(0);
+  const sourceTotal = firstPage.total ?? (firstPage.result.items || []).length;
+  const safeLimit = Math.min(sourceTotal, 1_500);
+  const starts = Array.from({ length: Math.max(0, Math.ceil(safeLimit / 50) - 1) }, (_, index) => (index + 1) * 50);
+  const deals: Array<Record<string, unknown>> = [...(firstPage.result.items || [])];
+  for (let index = 0; index < starts.length; index += 5) {
+    const pages = await Promise.all(starts.slice(index, index + 5).map(loadPage));
+    for (const page of pages) deals.push(...(page.result.items || []));
+  }
 
   const sheets = env.GOOGLE_SERVICE_ACCOUNT_EMAIL && env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
     ? await readGoogleRanges({
@@ -63,6 +66,7 @@ export async function runInvestmentAgent(env: AgentEnvironment, deliver: boolean
     lostStageIds: config.bitrix.lostStageIds.length ? config.bitrix.lostStageIds : inferredLost,
     amountColumnIndex: config.google.amountColumnIndex,
   }, funnelMeta);
+  if (sourceTotal > deals.length) metrics.warnings.push(`Оперативный срез: ${deals.length} последних из ${sourceTotal} сделок. Полная история синхронизируется отдельно.`);
   const report = formatDeterministicReport(metrics, config.currency);
   let telegramMessageId: number | undefined;
   if (deliver) {
