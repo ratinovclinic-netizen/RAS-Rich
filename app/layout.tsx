@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "A.R.K. — персональный ИИ-ассистент",
-  description: "Ваш личный онлайн-ассистент с голосом, памятью и режимами работы.",
+  title: "R.I.C.H. — командный центр инвест-отдела",
+  description: "Автономный контроль показателей инвестиционного отдела по данным Bitrix24 и Google Sheets.",
   openGraph: {
-    title: "A.R.K. — персональный ИИ-ассистент",
-    description: "Думает вместе с вами. Помнит контекст. Всегда на связи.",
+    title: "R.I.C.H. — командный центр инвест-отдела",
+    description: "Деньги, конверсии, менеджеры, узкие места и качество данных в одном центре.",
     type: "website",
   },
 };
