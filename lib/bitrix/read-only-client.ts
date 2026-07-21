@@ -100,8 +100,6 @@ export function createBitrixReadOnlyClient(rawWebhookUrl: string) {
             "content-type": "application/json",
           },
           body: JSON.stringify(params),
-          cache: "no-store",
-          redirect: "error",
           signal: controller.signal,
         });
 
