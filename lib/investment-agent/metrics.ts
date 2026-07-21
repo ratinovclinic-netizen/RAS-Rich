@@ -11,7 +11,69 @@ export type InvestmentMetrics = {
   funnels: Array<{ id: number; name: string; total: number; active: number; stale: number; value: number; stages: Array<{ id: string; name: string; deals: number; stale: number; value: number }> }>;
   bottlenecks: Bottleneck[];
   warnings: string[];
+  command: {
+    period: string;
+    conversions: Array<{ label: string; from: number; to: number; rate: number; planRate?: number }>;
+    money: { received: number; expected: number; currency: "USD"; receivedKgs: number; expectedKgs: number };
+    planFact: { plan: number; fact: number; variance: number; varianceRate: number; forecast: number; completion: number };
+    managers: Array<{ name: string; leads: number; qualified: number; meetings: number; deals: number; revenue: number; efficiency: number }>;
+    sources: Array<{ name: string; state: "ok" | "warn"; detail: string }>;
+    efficiency: number;
+  };
 };
+
+function numeric(value: unknown): number {
+  const text = String(value ?? "").replace(/[$₽₸₴€%]/g, "").replace(/[\s\u00a0]/g, "").replace(",", ".");
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function sheetCommand(sheets: SheetRange[]) {
+  const plan = sheets.find(s => s.range.toLowerCase().includes("план-факт"))?.rows || sheets[0]?.rows || [];
+  const managers = sheets.find(s => s.range.toLowerCase().includes("менеджер"))?.rows || [];
+  const labels = new Map(plan.map(row => [String(row[0] || "").trim().toLowerCase(), row]));
+  const val = (label: string, column = 12) => numeric(labels.get(label.toLowerCase())?.[column]);
+  const rate = (label: string, column = 12) => numeric(labels.get(label.toLowerCase())?.[column]);
+  const leads = val("Все новые созданные лиды");
+  const mql = val("Целевые лиды (MQL)");
+  const qualified = val("Квалифицированные сделки");
+  const meetings = val("1я встреча проведенна");
+  const deals = val("Заключенне сделки (количество)");
+  const planMoney = val("Фактическое поступление", 10) || val("Общая сумма заключенных сделок", 10);
+  const factMoney = val("Фактическое поступление");
+  const expected = val("Прогноз");
+  const pct = (a:number,b:number) => b ? Math.round(a / b * 1000) / 10 : 0;
+  const managerRows = new Map(managers.map(row => [String(row[0] || "").trim().toLowerCase(), row]));
+  const managerValue = (label:string, col:number) => numeric(managerRows.get(label.toLowerCase())?.[col]);
+  const managerNames = ["Менеджер 1", "Менеджер 2", "Менеджер 3"];
+  const managerColumns = [8,9,10];
+  const managerData = managerColumns.map((col,index) => {
+    const ml = managerValue("Все новые созданные лиды",col);
+    const mq = managerValue("Квалифицированные сделки",col);
+    const mm = managerValue("1я встреча проведенна",col);
+    const md = managerValue("Заключенне сделки (количество)",col);
+    const mr = managerValue("Фактическое поступление",col);
+    const efficiency = Math.round((pct(mq,ml)*.25 + pct(mm,mq)*.35 + pct(md,mm)*.4));
+    return { name: managerNames[index], leads: ml, qualified: mq, meetings: mm, deals: md, revenue: mr, efficiency };
+  });
+  return {
+    period: "Июль 2026",
+    conversions: [
+      { label:"Лид → качественный лид", from:leads, to:mql, rate:pct(mql,leads), planRate:80 },
+      { label:"Качественный лид → встреча", from:mql, to:meetings, rate:pct(meetings,mql), planRate:18 },
+      { label:"Встреча → сделка", from:meetings, to:deals, rate:pct(deals,meetings), planRate:35 },
+    ],
+    money: { received:factMoney, expected, currency:"USD" as const, receivedKgs:0, expectedKgs:0 },
+    planFact: { plan:planMoney, fact:factMoney, variance:factMoney-planMoney, varianceRate:pct(factMoney-planMoney,planMoney), forecast:expected, completion:pct(factMoney,planMoney) },
+    managers: managerData,
+    efficiency: Math.max(0,Math.min(100,Math.round(pct(deals,leads)*8 + pct(meetings,mql)*.35 + pct(factMoney,planMoney)*.45))),
+    sources: [
+      { name:"Bitrix24 · R.I.C.H.", state:"ok" as const, detail:"карточки, стадии, суммы и активность" },
+      { name:"Google Sheets", state:"ok" as const, detail:`план-факт и KPI · ${plan.length} строк` },
+      { name:"Контроль качества", state:"warn" as const, detail:"ежедневная сверка расхождений" },
+    ],
+  };
+}
 
 function amount(value: unknown): number {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
@@ -69,6 +131,7 @@ export function calculateMetrics(deals: Deal[], sheets: SheetRange[], config: { 
     return { severity: staleRate >= 50 && stage.stale >= 5 ? "high" as const : "medium" as const, funnel: funnel.name, stage: stage.name, deals: stage.deals, staleDeals: stage.stale, staleRate, ...advice };
   })).filter((item) => item.staleDeals >= 3 && item.staleRate >= 20).sort((a, b) => b.staleDeals - a.staleDeals).slice(0, 6);
 
+  const command = sheetCommand(sheets);
   return {
     generatedAt: new Date().toISOString(),
     deals: {
@@ -88,6 +151,7 @@ export function calculateMetrics(deals: Deal[], sheets: SheetRange[], config: { 
     funnels,
     bottlenecks,
     warnings,
+    command,
   };
 }
 
