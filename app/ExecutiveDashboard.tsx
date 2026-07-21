@@ -17,7 +17,7 @@ const number=new Intl.NumberFormat("ru-RU");
 const usd=new Intl.NumberFormat("ru-RU",{style:"currency",currency:"USD",maximumFractionDigits:0});
 const kgs=new Intl.NumberFormat("ru-RU",{style:"currency",currency:"KGS",maximumFractionDigits:0});
 
-export function ExecutiveDashboard({userName,signOutPath}:{userName:string;signOutPath:string}){
+export function ExecutiveDashboard({userName,signOutPath}:{userName:string;signOutPath?:string}){
   const [data,setData]=useState<Metrics|null>(null);const [error,setError]=useState("");const [refreshing,setRefreshing]=useState(false);
   const load=()=>{setRefreshing(true);setError("");fetch("/api/investment-agent/run",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({deliver:false})}).then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error);setData(j.metrics)}).catch(e=>setError(e.message||"Ошибка загрузки")).finally(()=>setRefreshing(false))};
   useEffect(load,[]);
@@ -25,7 +25,7 @@ export function ExecutiveDashboard({userName,signOutPath}:{userName:string;signO
   const c=data.command;const weakest=[...c.conversions].sort((a,b)=>a.rate-b.rate)[0];const top=data.bottlenecks[0];
   const bottleneck=top?`${top.funnel}: ${top.stage}`:`${weakest.label} — самая низкая конверсия ${weakest.rate}%`;
   return <main className="exec-shell">
-    <header className="exec-top"><div className="exec-brand"><div className="exec-mark">R</div><div><b>R.I.C.H.</b><small>INVESTMENT INTELLIGENCE</small></div></div><div className="exec-crumb">Командный центр <span>/ Инвестиционный отдел</span></div><div className={`exec-trust ${c.reliability.level}`}><i/>{c.reliability.score}% · {c.reliability.conclusion==="confirmed"?"данные подтверждены":"выводы предварительные"}</div><div className="exec-user">{userName}<a href={signOutPath}>Выйти</a></div></header>
+    <header className="exec-top"><div className="exec-brand"><div className="exec-mark">R</div><div><b>R.I.C.H.</b><small>INVESTMENT INTELLIGENCE</small></div></div><div className="exec-crumb">Командный центр <span>/ Инвестиционный отдел</span></div><div className={`exec-trust ${c.reliability.level}`}><i/>{c.reliability.score}% · {c.reliability.conclusion==="confirmed"?"данные подтверждены":"выводы предварительные"}</div><div className="exec-user">{userName}{signOutPath&&<a href={signOutPath}>Выйти</a>}</div></header>
     <section className="exec-main">
       <div className="exec-title"><div><span className="exec-overline">{c.period} · ОБНОВЛЕНО {new Date(data.generatedAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}</span><h1>Главное за сегодня</h1><p>Деньги, сквозные конверсии, эффективность команды и контроль качества данных</p></div><button onClick={load} disabled={refreshing}>{refreshing?"Сверяю…":"Обновить данные"}</button></div>
       <section className="exec-kpis exec-kpis-money">

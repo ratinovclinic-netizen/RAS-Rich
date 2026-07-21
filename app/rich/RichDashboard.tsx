@@ -15,7 +15,7 @@ type DealDetail = { deal: Deal; activities: Array<{ ID?: string; SUBJECT?: strin
 const number = new Intl.NumberFormat("ru-RU");
 const formatAmount = (value: number) => new Intl.NumberFormat("ru-RU", { style: "currency", currency: value >= 1_000_000 ? "KGS" : "USD", notation: "compact", maximumFractionDigits: 1 }).format(value);
 
-export function RichDashboard({ userName, signOutPath }: { userName: string; signOutPath: string }) {
+export function RichDashboard({ userName, signOutPath }: { userName: string; signOutPath?: string }) {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -58,7 +58,7 @@ export function RichDashboard({ userName, signOutPath }: { userName: string; sig
       <div className="rich-brand"><img src="/brand/rich-logo-gold.png" alt="R.I.C.H." /><div><strong>R.I.C.H.</strong><span>CONTROL CENTER</span></div></div>
       <nav className="rich-nav"><a className="active" href="#overview">Обзор</a><a href="#funnels">Воронки</a><a href="#bottlenecks">Узкие места</a><a href="#sources">Источники</a></nav>
       <div className="rich-source-state"><i /><div><span>ДАННЫЕ</span><strong>{error ? "ТРЕБУЮТ ВНИМАНИЯ" : loading ? "ОБНОВЛЯЮТСЯ" : "АКТУАЛЬНЫ"}</strong></div></div>
-      <div className="rich-account"><span>{userName}</span><a href={signOutPath}>Выйти</a></div>
+      <div className="rich-account"><span>{userName}</span>{signOutPath && <a href={signOutPath}>Выйти</a>}</div>
     </aside>
     <section className="rich-main">
       <header className="rich-header" id="overview"><div><span className="rich-kicker">ЕЖЕДНЕВНЫЙ КОНТРОЛЬ ИНВЕСТ-ОТДЕЛА</span><h1>Главное на сегодня</h1><p>{metrics ? `Обновлено ${new Date(metrics.generatedAt).toLocaleString("ru-RU")}` : "Bitrix24 · Google Sheets · аналитика R.I.C.H."}</p></div><button onClick={() => void refresh()} disabled={loading}>{loading ? "Обновляю…" : "Обновить данные"}</button></header>
