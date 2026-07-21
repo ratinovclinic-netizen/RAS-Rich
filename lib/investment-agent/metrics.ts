@@ -19,6 +19,7 @@ export type InvestmentMetrics = {
     managers: Array<{ name: string; leads: number; qualified: number; meetings: number; deals: number; revenue: number; efficiency: number }>;
     sources: Array<{ name: string; state: "ok" | "warn"; detail: string }>;
     efficiency: number;
+    reliability: { score: number; level: "green" | "yellow" | "red"; conclusion: "confirmed" | "preliminary"; issues: string[]; bitrixCheckedAt: string; sheetCheckedAt: string };
   };
 };
 
@@ -72,6 +73,7 @@ function sheetCommand(sheets: SheetRange[]) {
       { name:"Google Sheets", state:"ok" as const, detail:`план-факт и KPI · ${plan.length} строк` },
       { name:"Контроль качества", state:"warn" as const, detail:"ежедневная сверка расхождений" },
     ],
+    reliability: { score: 0, level: "red" as const, conclusion: "preliminary" as const, issues: [] as string[], bitrixCheckedAt: "", sheetCheckedAt: "" },
   };
 }
 
@@ -132,6 +134,21 @@ export function calculateMetrics(deals: Deal[], sheets: SheetRange[], config: { 
   })).filter((item) => item.staleDeals >= 3 && item.staleRate >= 20).sort((a, b) => b.staleDeals - a.staleDeals).slice(0, 6);
 
   const command = sheetCommand(sheets);
+  const staleCount = funnels.reduce((sum, funnel) => sum + funnel.stale, 0);
+  const issues: string[] = [];
+  if (warnings.length) issues.push(...warnings);
+  if (staleCount) issues.push(`${staleCount} карточек Bitrix без движения более 7 дней.`);
+  if (!sheets.length || rows.length === 0) issues.push("Google-таблица не вернула данные для контрольного расчёта.");
+  if (deals.length >= 250) issues.push("Bitrix показывает оперативный срез; полная история требует фоновой синхронизации.");
+  const score = Math.max(0, 100 - warnings.length * 20 - (staleCount ? 12 : 0) - (deals.length >= 250 ? 18 : 0) - (!rows.length ? 35 : 0));
+  command.reliability = {
+    score,
+    level: score >= 85 ? "green" : score >= 60 ? "yellow" : "red",
+    conclusion: score >= 85 ? "confirmed" : "preliminary",
+    issues: issues.slice(0, 5),
+    bitrixCheckedAt: new Date().toISOString(),
+    sheetCheckedAt: new Date().toISOString(),
+  };
   return {
     generatedAt: new Date().toISOString(),
     deals: {

@@ -10,6 +10,7 @@ type Command = {
   managers:Array<{name:string;leads:number;qualified:number;meetings:number;deals:number;revenue:number;efficiency:number}>;
   sources:Array<{name:string;state:"ok"|"warn";detail:string}>;
   efficiency:number;
+  reliability:{score:number;level:"green"|"yellow"|"red";conclusion:"confirmed"|"preliminary";issues:string[];bitrixCheckedAt:string;sheetCheckedAt:string};
 };
 type Metrics={generatedAt:string;deals:{total:number;active:number};command:Command;bottlenecks:Array<{funnel:string;stage:string;staleDeals:number;staleRate:number;diagnosis:string;action:string}>};
 const number=new Intl.NumberFormat("ru-RU");
@@ -24,7 +25,7 @@ export function ExecutiveDashboard({userName,signOutPath}:{userName:string;signO
   const c=data.command;const weakest=[...c.conversions].sort((a,b)=>a.rate-b.rate)[0];const top=data.bottlenecks[0];
   const bottleneck=top?`${top.funnel}: ${top.stage}`:`${weakest.label} — самая низкая конверсия ${weakest.rate}%`;
   return <main className="exec-shell">
-    <header className="exec-top"><div className="exec-brand"><div className="exec-mark">R</div><div><b>R.I.C.H.</b><small>INVESTMENT INTELLIGENCE</small></div></div><div className="exec-crumb">Командный центр <span>/ Инвестиционный отдел</span></div><div className="exec-live"><i/>Bitrix + таблица подключены</div><div className="exec-user">{userName}<a href={signOutPath}>Выйти</a></div></header>
+    <header className="exec-top"><div className="exec-brand"><div className="exec-mark">R</div><div><b>R.I.C.H.</b><small>INVESTMENT INTELLIGENCE</small></div></div><div className="exec-crumb">Командный центр <span>/ Инвестиционный отдел</span></div><div className={`exec-trust ${c.reliability.level}`}><i/>{c.reliability.score}% · {c.reliability.conclusion==="confirmed"?"данные подтверждены":"выводы предварительные"}</div><div className="exec-user">{userName}<a href={signOutPath}>Выйти</a></div></header>
     <section className="exec-main">
       <div className="exec-title"><div><span className="exec-overline">{c.period} · ОБНОВЛЕНО {new Date(data.generatedAt).toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit"})}</span><h1>Главное за сегодня</h1><p>Деньги, сквозные конверсии, эффективность команды и контроль качества данных</p></div><button onClick={load} disabled={refreshing}>{refreshing?"Сверяю…":"Обновить данные"}</button></div>
       <section className="exec-kpis exec-kpis-money">
@@ -39,7 +40,7 @@ export function ExecutiveDashboard({userName,signOutPath}:{userName:string;signO
       </section>
       <section className="exec-bottom exec-bottom-managers">
         <article className="exec-card"><div className="exec-cardhead"><div><span className="exec-overline">КОМАНДА</span><h3>Показатели всех менеджеров</h3></div><a href="/rich">Карточки →</a></div><div className="manager-table"><div className="manager-head"><span>Менеджер</span><span>Лиды</span><span>Квалиф.</span><span>Встречи</span><span>Сделки</span><span>Поступило</span><span>Индекс</span></div>{c.managers.map((m,i)=><div className="manager-row" key={m.name}><strong>{m.name}</strong><span>{m.leads}</span><span>{m.qualified}</span><span>{m.meetings}</span><span>{m.deals}</span><span>{usd.format(m.revenue)}</span><em className={m.efficiency<60?"bad":"ok"}>{m.efficiency}</em></div>)}</div></article>
-        <article className="exec-card"><div className="exec-cardhead"><div><span className="exec-overline">НАДЁЖНОСТЬ</span><h3>Контроль источников</h3></div></div><div className="source-stack">{c.sources.map(s=><div key={s.name}><i className={s.state}/><p><strong>{s.name}</strong><span>{s.detail}</span></p><b>{s.state==="ok"?"АКТУАЛЬНО":"КОНТРОЛЬ"}</b></div>)}</div><p className="daily-note">Ежедневная сверка подсвечивает расхождения, пропущенные поля и карточки без движения. Даже при чистых данных система показывает самое слабое звено.</p></article>
+        <article className="exec-card"><div className="exec-cardhead"><div><span className="exec-overline">НАДЁЖНОСТЬ</span><h3>Контроль источников</h3></div><strong className={`trust-score ${c.reliability.level}`}>{c.reliability.score}%</strong></div><div className="source-stack">{c.sources.map(s=><div key={s.name}><i className={s.state}/><p><strong>{s.name}</strong><span>{s.detail}</span></p><b>{s.state==="ok"?"ПРОВЕРЕН":"КОНТРОЛЬ"}</b></div>)}</div>{c.reliability.issues.length?<div className="data-issues"><span>ТРЕБУЕТ ВНИМАНИЯ</span>{c.reliability.issues.map(issue=><p key={issue}>• {issue}</p>)}</div>:<p className="daily-note">Расхождений и критичных пропусков не найдено. Управленческие выводы подтверждены.</p>}</article>
       </section>
     </section>
   </main>
