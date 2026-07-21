@@ -24,15 +24,16 @@ export async function runInvestmentAgent(env: AgentEnvironment, deliver: boolean
   const bitrix = createBitrixReadOnlyClient(env.BITRIX24_WEBHOOK_URL);
   const categoriesResponse = await bitrix.call<{ categories?: Array<{ id?: number; name?: string }> }>("crm.category.list", { entityTypeId: config.bitrix.entityTypeId });
   const selectedCategories = (categoriesResponse.result.categories || []).filter((category) => categoryIds.includes(Number(category.id)));
-  const funnelMeta = await Promise.all(selectedCategories.map(async (category) => {
+  const funnelMeta: Array<{ id: number; name: string; stages: Array<{ id: string; name: string; semantics: string }> }> = [];
+  for (const category of selectedCategories) {
     const categoryId = Number(category.id);
     const stagesResponse = await bitrix.call<Array<Record<string, unknown>>>("crm.status.list", { filter: { ENTITY_ID: `DEAL_STAGE_${categoryId}` }, order: { SORT: "ASC" } });
-    return {
+    funnelMeta.push({
       id: categoryId,
       name: category.name || `Воронка ${categoryId}`,
       stages: stagesResponse.result.map((stage) => ({ id: String(stage.STATUS_ID || ""), name: String(stage.NAME || stage.STATUS_ID || "Стадия"), semantics: String(stage.SEMANTICS || "") })),
-    };
-  }));
+    });
+  }
   const inferredWon = funnelMeta.flatMap((funnel) => funnel.stages.filter((stage) => stage.semantics === "S").map((stage) => stage.id));
   const inferredLost = funnelMeta.flatMap((funnel) => funnel.stages.filter((stage) => stage.semantics === "F").map((stage) => stage.id));
   const filter = categoryIds.length ? { "@categoryId": categoryIds } : {};
@@ -45,12 +46,12 @@ export async function runInvestmentAgent(env: AgentEnvironment, deliver: boolean
     });
   const firstPage = await loadPage(0);
   const sourceTotal = firstPage.total ?? (firstPage.result.items || []).length;
-  const safeLimit = Math.min(sourceTotal, 1_500);
+  const safeLimit = Math.min(sourceTotal, 250);
   const starts = Array.from({ length: Math.max(0, Math.ceil(safeLimit / 50) - 1) }, (_, index) => (index + 1) * 50);
   const deals: Array<Record<string, unknown>> = [...(firstPage.result.items || [])];
-  for (let index = 0; index < starts.length; index += 5) {
-    const pages = await Promise.all(starts.slice(index, index + 5).map(loadPage));
-    for (const page of pages) deals.push(...(page.result.items || []));
+  for (const start of starts) {
+    const page = await loadPage(start);
+    deals.push(...(page.result.items || []));
   }
 
   const sheets = env.GOOGLE_SERVICE_ACCOUNT_EMAIL && env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
