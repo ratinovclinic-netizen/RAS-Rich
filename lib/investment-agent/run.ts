@@ -46,12 +46,11 @@ export async function runInvestmentAgent(env: AgentEnvironment, deliver: boolean
     });
   const firstPage = await loadPage(0);
   const sourceTotal = firstPage.total ?? (firstPage.result.items || []).length;
-  const safeLimit = Math.min(sourceTotal, 250);
-  const starts = Array.from({ length: Math.max(0, Math.ceil(safeLimit / 50) - 1) }, (_, index) => (index + 1) * 50);
+  const starts = Array.from({ length: Math.max(0, Math.ceil(sourceTotal / 50) - 1) }, (_, index) => (index + 1) * 50);
   const deals: Array<Record<string, unknown>> = [...(firstPage.result.items || [])];
-  for (const start of starts) {
-    const page = await loadPage(start);
-    deals.push(...(page.result.items || []));
+  for (let index = 0; index < starts.length; index += 5) {
+    const pages = await Promise.all(starts.slice(index,index+5).map(loadPage));
+    for (const page of pages) deals.push(...(page.result.items || []));
   }
 
   const sheets = env.GOOGLE_SERVICE_ACCOUNT_EMAIL && env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY
@@ -66,6 +65,7 @@ export async function runInvestmentAgent(env: AgentEnvironment, deliver: boolean
     wonStageIds: config.bitrix.wonStageIds.length ? config.bitrix.wonStageIds : inferredWon,
     lostStageIds: config.bitrix.lostStageIds.length ? config.bitrix.lostStageIds : inferredLost,
     amountColumnIndex: config.google.amountColumnIndex,
+    sourceTotal,
   }, funnelMeta);
   if (sourceTotal > deals.length) metrics.warnings.push(`Оперативный срез: ${deals.length} последних из ${sourceTotal} сделок. Полная история синхронизируется отдельно.`);
   const report = formatDeterministicReport(metrics, config.currency);

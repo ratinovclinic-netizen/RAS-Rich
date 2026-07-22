@@ -7,7 +7,7 @@ export type Bottleneck = { severity: "high" | "medium"; funnel: string; stage: s
 export type InvestmentMetrics = {
   generatedAt: string;
   deals: { total: number; active: number; won: number; lost: number; pipelineValue: number; wonValue: number; conversionRate: number };
-  sheets: { rowCount: number; amountTotal: number; ranges: Array<{ range: string; rows: number }> };
+  sheets: { rowCount: number; amountTotal: number; ranges: Array<{ range: string; rows: number; columns: number; cells: number }> };
   funnels: Array<{ id: number; name: string; total: number; active: number; stale: number; value: number; stages: Array<{ id: string; name: string; deals: number; stale: number; value: number }> }>;
   bottlenecks: Bottleneck[];
   warnings: string[];
@@ -113,7 +113,7 @@ function recommendation(funnel: string, stage: string): { diagnosis: string; act
   return { diagnosis: "В стадии скопилась очередь сделок без обновления.", action: "Разобрать сделки старше 7 дней, зафиксировать следующий шаг и закрыть неактуальные карточки." };
 }
 
-export function calculateMetrics(deals: Deal[], sheets: SheetRange[], config: { wonStageIds: string[]; lostStageIds: string[]; amountColumnIndex: number }, funnelMeta: FunnelMeta[] = []): InvestmentMetrics {
+export function calculateMetrics(deals: Deal[], sheets: SheetRange[], config: { wonStageIds: string[]; lostStageIds: string[]; amountColumnIndex: number; sourceTotal?: number }, funnelMeta: FunnelMeta[] = []): InvestmentMetrics {
   const won = new Set(config.wonStageIds);
   const lost = new Set(config.lostStageIds);
   const wonDeals = deals.filter((deal) => won.has(deal.stageId || ""));
@@ -159,12 +159,13 @@ export function calculateMetrics(deals: Deal[], sheets: SheetRange[], config: { 
   if (warnings.length) issues.push(...warnings);
   if (staleCount) issues.push(`${staleCount} карточек Bitrix без движения более 7 дней.`);
   if (!sheets.length || rows.length === 0) issues.push("Google-таблица не вернула данные для контрольного расчёта.");
-  if (deals.length >= 250) issues.push("Bitrix показывает оперативный срез; полная история требует фоновой синхронизации.");
-  const score = Math.max(0, 100 - warnings.length * 20 - (staleCount ? 12 : 0) - (deals.length >= 250 ? 18 : 0) - (!rows.length ? 35 : 0));
+  const incompleteBitrix = typeof config.sourceTotal === "number" && deals.length < config.sourceTotal;
+  if (incompleteBitrix) issues.push(`Bitrix загружен не полностью: ${deals.length} из ${config.sourceTotal} карточек.`);
+  const score = Math.max(0, 99 - warnings.length * 20 - (incompleteBitrix ? 25 : 0) - (!rows.length ? 35 : 0));
   command.reliability = {
     score,
-    level: score >= 85 ? "green" : score >= 60 ? "yellow" : "red",
-    conclusion: score >= 85 ? "confirmed" : "preliminary",
+    level: score >= 95 ? "green" : score >= 60 ? "yellow" : "red",
+    conclusion: score >= 95 ? "confirmed" : "preliminary",
     issues: issues.slice(0, 5),
     bitrixCheckedAt: new Date().toISOString(),
     sheetCheckedAt: new Date().toISOString(),
@@ -183,7 +184,7 @@ export function calculateMetrics(deals: Deal[], sheets: SheetRange[], config: { 
     sheets: {
       rowCount: rows.length,
       amountTotal: rows.reduce((sum, row) => sum + amount(row[config.amountColumnIndex]), 0),
-      ranges: sheets.map((sheet) => ({ range: sheet.range, rows: Math.max(0, sheet.rows.length - 1) })),
+      ranges: sheets.map((sheet) => ({ range: sheet.range, rows: Math.max(0, sheet.rows.length - 1), columns: Math.max(0,...sheet.rows.map(row=>row.length)), cells: sheet.rows.reduce((sum,row)=>sum+row.filter(cell=>cell!==""&&cell!==null&&cell!==undefined).length,0) })),
     },
     funnels,
     bottlenecks,
