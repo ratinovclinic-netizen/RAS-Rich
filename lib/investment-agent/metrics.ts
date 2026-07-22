@@ -1,4 +1,4 @@
-type Deal = { id?: string | number; categoryId?: string | number; stageId?: string; opportunity?: string | number; currencyId?: string; assignedById?: string | number; updatedTime?: string };
+type Deal = { id?: string | number; categoryId?: string | number; stageId?: string; opportunity?: string | number; currencyId?: string; assignedById?: string | number; createdTime?: string; updatedTime?: string };
 type SheetRange = { range: string; rows: unknown[][] };
 type FunnelMeta = { id: number; name: string; stages: Array<{ id: string; name: string; semantics?: string }> };
 
@@ -17,6 +17,7 @@ export type InvestmentMetrics = {
     money: { received: number; expected: number; currency: "USD"; receivedKgs: number; expectedKgs: number };
     planFact: { plan: number; fact: number; variance: number; varianceRate: number; forecast: number; completion: number };
     managers: Array<{ name: string; leads: number; qualified: number; meetings: number; deals: number; revenue: number; efficiency: number }>;
+    leadPulse: { today: number; week: number; month: number; mqlWeek: number; meetingsWeek: number; dealsWeek: number; bitrixVisible: number; checkedDate: string };
     sources: Array<{ name: string; state: "ok" | "warn"; detail: string }>;
     efficiency: number;
     reliability: { score: number; level: "green" | "yellow" | "red"; conclusion: "confirmed" | "preliminary"; issues: string[]; bitrixCheckedAt: string; sheetCheckedAt: string };
@@ -32,6 +33,7 @@ function numeric(value: unknown): number {
 function sheetCommand(sheets: SheetRange[]) {
   const plan = sheets.find(s => s.range.toLowerCase().includes("план-факт"))?.rows || sheets[0]?.rows || [];
   const managers = sheets.find(s => s.range.toLowerCase().includes("менеджер"))?.rows || [];
+  const daily = sheets.find(s => s.range.toLowerCase().includes("дням"))?.rows || [];
   const labels = new Map(plan.map(row => [String(row[0] || "").trim().toLowerCase(), row]));
   const val = (label: string, column = 12) => numeric(labels.get(label.toLowerCase())?.[column]);
   const rate = (label: string, column = 12) => numeric(labels.get(label.toLowerCase())?.[column]);
@@ -57,6 +59,22 @@ function sheetCommand(sheets: SheetRange[]) {
     const efficiency = Math.round((pct(mq,ml)*.25 + pct(mm,mq)*.35 + pct(md,mm)*.4));
     return { name: managerNames[index], leads: ml, qualified: mq, meetings: mm, deals: md, revenue: mr, efficiency };
   });
+  const dailyHeader = daily[0] || [];
+  const dailyRows = new Map(daily.slice(1).map(row => [String(row[0] || "").trim().toLowerCase(), row]));
+  const now = new Date();
+  const dateKey = (date: Date) => `${String(date.getDate()).padStart(2,"0")}.${String(date.getMonth()+1).padStart(2,"0")}.${date.getFullYear()}`;
+  const indexes = (days: number) => Array.from({length:days},(_,offset) => {
+    const date = new Date(now); date.setDate(now.getDate()-offset);
+    return dailyHeader.findIndex(cell => String(cell).trim() === dateKey(date));
+  }).filter(index => index > 0);
+  const sumDaily = (label:string, days:number) => {
+    const row = dailyRows.get(label.toLowerCase()) || [];
+    return indexes(days).reduce((sum,index) => sum + numeric(row[index]),0);
+  };
+  const monthSuffix = `.${String(now.getMonth()+1).padStart(2,"0")}.${now.getFullYear()}`;
+  const monthIndexes = dailyHeader.map((cell,index) => ({cell:String(cell),index})).filter(({cell,index}) => index > 0 && cell.endsWith(monthSuffix)).map(item => item.index);
+  const sumMonth = (label:string) => { const row=dailyRows.get(label.toLowerCase())||[]; return monthIndexes.reduce((sum,index)=>sum+numeric(row[index]),0); };
+  const dailyLeadLabel = "Все новые созданные лиды";
   return {
     period: "Июль 2026",
     conversions: [
@@ -67,6 +85,7 @@ function sheetCommand(sheets: SheetRange[]) {
     money: { received:factMoney, expected, currency:"USD" as const, receivedKgs:0, expectedKgs:0 },
     planFact: { plan:planMoney, fact:factMoney, variance:factMoney-planMoney, varianceRate:pct(factMoney-planMoney,planMoney), forecast:expected, completion:pct(factMoney,planMoney) },
     managers: managerData,
+    leadPulse: { today:sumDaily(dailyLeadLabel,1), week:sumDaily(dailyLeadLabel,7), month:sumMonth(dailyLeadLabel)||leads, mqlWeek:sumDaily("Целевые лиды (MQL)",7), meetingsWeek:sumDaily("1я встреча проведенна",7), dealsWeek:sumDaily("Заключенне сделки (количество)",7), bitrixVisible:0, checkedDate:dateKey(now) },
     efficiency: Math.max(0,Math.min(100,Math.round(pct(deals,leads)*8 + pct(meetings,mql)*.35 + pct(factMoney,planMoney)*.45))),
     sources: [
       { name:"Bitrix24 · R.I.C.H.", state:"ok" as const, detail:"карточки, стадии, суммы и активность" },
@@ -134,6 +153,7 @@ export function calculateMetrics(deals: Deal[], sheets: SheetRange[], config: { 
   })).filter((item) => item.staleDeals >= 3 && item.staleRate >= 20).sort((a, b) => b.staleDeals - a.staleDeals).slice(0, 6);
 
   const command = sheetCommand(sheets);
+  command.leadPulse.bitrixVisible = deals.filter(deal => [144,152].includes(Number(deal.categoryId))).length;
   const staleCount = funnels.reduce((sum, funnel) => sum + funnel.stale, 0);
   const issues: string[] = [];
   if (warnings.length) issues.push(...warnings);
@@ -181,6 +201,7 @@ export function formatDeterministicReport(metrics: InvestmentMetrics, currency: 
     `Активный портфель: ${money.format(metrics.deals.pipelineValue)}`,
     `Объём выигранных сделок: ${money.format(metrics.deals.wonValue)}`,
     `Google Sheets: ${metrics.sheets.rowCount} строк · сумма ${money.format(metrics.sheets.amountTotal)}`,
+    `Лиды: сегодня ${metrics.command.leadPulse.today} · 7 дней ${metrics.command.leadPulse.week} · месяц ${metrics.command.leadPulse.month} · MQL за 7 дней ${metrics.command.leadPulse.mqlWeek}`,
     ...(metrics.warnings.length ? ["⚠️ " + metrics.warnings.join(" ")] : []),
   ].join("\n");
 }
